@@ -1,0 +1,42 @@
+[
+  {
+    "id": "1",
+    "name": "qq",
+    "map": "dala",
+    "reason": "afk",
+    "addTime": "2026-10-24 15:25:01",
+    "isDeleted": true
+  },
+  {
+    "id": "2",
+    "name": "pirqq....",
+    "map": "dala",
+    "reason": "afk",
+    "addTime": "2026-10-24 15:32:44",
+    "isDeleted": false
+  },
+  {
+    "id": "3",
+    "name": "solt.....",
+    "map": "dala",
+    "reason": "afk,priest 总是满魔",
+    "addTime": "2026-10-24 15:33:17",
+    "isDeleted": false
+  },
+  {
+    "id": "4",
+    "name": "misterZHU",
+    "map": "dala",
+    "reason": "afk 最后boss的时候，还能拽",
+    "addTime": "2026-10-24 15:33:41",
+    "isDeleted": false
+  },
+  {
+    "id": "5",
+    "name": "sher",
+    "map": "dala",
+    "reason": "开局不久退，明显故意",
+    "addTime": "2026-10-24 15:34:00",
+    "isDeleted": false
+  }
+]

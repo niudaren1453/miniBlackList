@@ -1,0 +1,33 @@
+{
+  "name": "blacklist-management",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Vue3 + Koa2 黑名单管理系统",
+  "engines": {
+    "node": ">=18.11"
+  },
+  "scripts": {
+    "dev": "concurrently --names server,web --prefix-colors yellow,cyan \"npm run dev:server\" \"npm run dev:web\"",
+    "dev:server": "node --watch server/index.js",
+    "dev:web": "vite",
+    "build": "vite build",
+    "start": "node server/index.js",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@element-plus/icons-vue": "2.3.1",
+    "@koa/cors": "5.0.0",
+    "@koa/router": "12.0.2",
+    "async-lock": "1.4.1",
+    "axios": "1.7.7",
+    "element-plus": "2.8.8",
+    "koa": "2.15.3",
+    "koa-bodyparser": "4.4.1",
+    "vue": "3.5.12"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "5.1.4",
+    "concurrently": "9.0.1",
+    "vite": "5.4.10"
+  }
+}
