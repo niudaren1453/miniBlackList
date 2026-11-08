@@ -1,0 +1,35 @@
+// 弹窗标题区域的共享样式，由两个业务弹窗组件复用。
+@mixin heading {
+  .dialog-heading {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    padding-right: 24px;
+  }
+
+  .dialog-icon {
+    display: grid;
+    flex: 0 0 auto;
+    width: 42px;
+    height: 42px;
+    color: #4f46e5;
+    background: #eef2ff;
+    border-radius: 12px;
+    place-items: center;
+  }
+
+  .dialog-heading h3 {
+    margin: 0;
+    color: #0f172a;
+    font-weight: 700;
+    font-size: 19px;
+    line-height: 1.35;
+  }
+
+  .dialog-heading p {
+    margin: 4px 0 0;
+    color: #64748b;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+}

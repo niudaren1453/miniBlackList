@@ -27,3 +27,23 @@ export function updateBlacklist(id, data) {
 export function deleteBlacklist(id) {
   return request.delete(`/blacklist/${encodeURIComponent(id)}`)
 }
+
+/**
+ * 上传 WC3 大厅截图，由后端 OCR 后与黑名单匹配。
+ */
+export function scanBlacklistImage(image) {
+  return request.post(
+    '/blacklist/scan',
+    { image },
+    {
+      timeout: 60000
+    }
+  )
+}
+
+/**
+ * 对人工修正后的玩家名重新执行黑名单匹配。
+ */
+export function matchBlacklistNames(names) {
+  return request.post('/blacklist/match', { names })
+}

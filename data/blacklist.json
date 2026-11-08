@@ -27,7 +27,7 @@
     "id": "4",
     "name": "misterZHU",
     "map": "dala",
-    "reason": "afk 最后boss的时候，还能拽",
+    "reason": "afk 最后boss的时候，还很拽",
     "addTime": "2026-10-24 15:33:41",
     "isDeleted": false
   },
@@ -37,6 +37,46 @@
     "map": "dala",
     "reason": "开局不久退，明显故意",
     "addTime": "2026-10-24 15:34:00",
+    "isDeleted": false
+  },
+  {
+    "id": "6",
+    "name": "soupy",
+    "map": "fitos hero defense",
+    "reason": "拾取队友的东西直接卖的 hoarder",
+    "addTime": "2026-10-24 23:24:28",
+    "isDeleted": false
+  },
+  {
+    "id": "7",
+    "name": "hogy",
+    "map": "dala",
+    "reason": "菜b，德鲁伊tank死了一次就退了",
+    "addTime": "2026-10-25 16:53:00",
+    "isDeleted": false
+  },
+  {
+    "id": "8",
+    "name": "mangix",
+    "map": "dala",
+    "reason": "no noob 房进了个noob",
+    "addTime": "2026-10-25 19:24:46",
+    "isDeleted": false
+  },
+  {
+    "id": "9",
+    "name": "MrSilent",
+    "map": "dalaran",
+    "reason": "菜B，druid，满魔，不知道在干嘛，也不奶人",
+    "addTime": "2026-11-04 22:37:37",
+    "isDeleted": false
+  },
+  {
+    "id": "10",
+    "name": "lydm1453",
+    "map": "test",
+    "reason": "test",
+    "addTime": "2026-11-08 18:12:17",
     "isDeleted": false
   }
 ]

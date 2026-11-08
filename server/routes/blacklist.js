@@ -11,8 +11,12 @@ const {
 const {
   parseBlacklistPayload,
   parsePagination,
-  normalizeQueryText
+  normalizeQueryText,
+  parseImageDataUrl,
+  parseNameListPayload
 } = require('../utils/validation')
+const { scanLobbyImage } = require('../services/wc3Scan')
+const { matchNames } = require('../services/blacklistMatcher')
 
 const router = new Router({ prefix: '/api' })
 
@@ -67,6 +71,56 @@ router.get('/blacklist', async (ctx) => {
   ctx.body = {
     code: 0,
     data: { list, total, page, pageSize },
+    msg: 'success'
+  }
+})
+
+/**
+ * POST /api/blacklist/scan
+ * 上传 WC3 大厅截图，OCR 出玩家名并返回黑名单命中结果。
+ */
+router.post('/blacklist/scan', async (ctx) => {
+  const imageBuffer = parseImageDataUrl(ctx.request.body)
+  const scan = await scanLobbyImage(imageBuffer)
+  const records = await listRecords()
+  const matches = matchNames(
+    scan.names.map((item) => item.name),
+    records
+  )
+
+  ctx.body = {
+    code: 0,
+    data: {
+      ...scan,
+      matches,
+      summary: {
+        recognizedCount: scan.names.length,
+        matchedCount: matches.length
+      }
+    },
+    msg: 'success'
+  }
+})
+
+/**
+ * POST /api/blacklist/match
+ * 对 OCR 结果修正后的玩家名重新做黑名单匹配。
+ */
+router.post('/blacklist/match', async (ctx) => {
+  const names = parseNameListPayload(ctx.request.body)
+  const records = await listRecords()
+  const matches = matchNames(names, records)
+
+  ctx.body = {
+    code: 0,
+    data: {
+      names,
+      matches,
+      summary: {
+        recognizedCount: names.length,
+        matchedCount: matches.length
+      }
+    },
     msg: 'success'
   }
 })

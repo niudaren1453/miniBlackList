@@ -1,12 +1,19 @@
+$page-bg: #f4f7fb;
+$ink: #0f172a;
+$muted: #64748b;
+$line: #e7edf5;
+$brand: #4f46e5;
+$brand-dark: #4338ca;
+
 :root {
   color-scheme: light;
-  --page-bg: #f4f7fb;
-  --ink: #0f172a;
-  --muted: #64748b;
-  --line: #e7edf5;
-  --brand: #4f46e5;
-  --brand-dark: #4338ca;
-  --el-color-primary: #4f46e5;
+  --page-bg: #{$page-bg};
+  --ink: #{$ink};
+  --muted: #{$muted};
+  --line: #{$line};
+  --brand: #{$brand};
+  --brand-dark: #{$brand-dark};
+  --el-color-primary: #{$brand};
   --el-color-primary-light-3: #7c74ea;
   --el-color-primary-light-5: #a7a1f1;
   --el-color-primary-light-7: #cfcbf7;
@@ -53,29 +60,29 @@ textarea {
   font: inherit;
 }
 
-/* 对话框通过 Teleport 渲染到 body，使用全局类名统一圆角与宽度约束。 */
+// 对话框通过 Teleport 渲染到 body，使用全局类名统一圆角与宽度约束。
 .blacklist-dialog {
   max-width: calc(100vw - 32px);
   border-radius: 18px;
   overflow: hidden;
-}
 
-.blacklist-dialog .el-dialog__header {
-  margin-right: 0;
-  padding: 24px 24px 0;
-}
+  .el-dialog__header {
+    margin-right: 0;
+    padding: 24px 24px 0;
+  }
 
-.blacklist-dialog .el-dialog__body {
-  padding: 20px 24px 8px;
-}
+  .el-dialog__body {
+    padding: 20px 24px 8px;
+  }
 
-.blacklist-dialog .el-dialog__footer {
-  padding: 12px 24px 24px;
-}
+  .el-dialog__footer {
+    padding: 12px 24px 24px;
+  }
 
-.blacklist-dialog .el-dialog__headerbtn {
-  top: 18px;
-  right: 18px;
+  .el-dialog__headerbtn {
+    top: 18px;
+    right: 18px;
+  }
 }
 
 ::selection {

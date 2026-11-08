@@ -1,6 +1,6 @@
 # 黑名单管理系统
 
-基于 **Vue 3 + Element Plus + Axios + Koa 2** 的黑名单管理页面，后端以本地 JSON 文件持久化数据，完整实现搜索、分页、新增、修改与软删除。
+基于 **Vue 3 + Element Plus + Axios + Koa 2** 的黑名单管理页面，后端以本地 JSON 文件持久化数据，完整实现搜索、分页、新增、修改与软删除。新增 **WC3 大厅截图检测**：上传截图后自动识别玩家名并匹配黑名单。
 
 ![页面预览](docs/preview.png)
 
@@ -16,14 +16,26 @@
 - 自增字符串 ID，删除后不复用；`addTime` 由后端生成
 - `async-lock` 串行化读写，避免并发写入丢失数据
 - 首次启动自动创建 `data/blacklist.json`
+- **WC3 大厅截图 OCR**：自动定位双方玩家、识别玩家名，并返回黑名单命中原因
+- OCR 结果可人工修正后重新匹配；截图只在内存中处理，不落盘
+- 前端样式使用 **SCSS**，新增/编辑与截图检测均拆分为独立组件
 
 ## 技术栈
 
 | 端 | 技术 |
 | --- | --- |
-| 前端 | Vue 3、Vite 5、Element Plus、Axios |
+| 前端 | Vue 3、Vite 5、Element Plus、Axios、SCSS |
 | 后端 | Koa 2、@koa/router、@koa/cors、koa-bodyparser、async-lock |
+| 截图识别 | Tesseract.js 5、Sharp、本地英文训练数据 |
 | 持久化 | 本地 JSON 文件 `data/blacklist.json` |
+
+## 前端组件
+
+| 组件 | 职责 |
+| --- | --- |
+| `views/BlacklistView.vue` | 列表、搜索、分页、删除和页面布局 |
+| `components/BlacklistFormDialog.vue` | 新增 / 编辑黑名单弹窗、表单校验和提交 |
+| `components/Wc3ScanDialog.vue` | 截图上传、OCR 识别、命中展示和手动修正名单 |
 
 ## 目录结构
 
@@ -36,7 +48,10 @@ blacklist/
 │  ├─ index.js                # 服务入口
 │  ├─ blacklistStore.js       # JSON 读写、自增 ID、软删除
 │  ├─ routes/
-│  │  └─ blacklist.js         # RESTful 路由
+│  │  └─ blacklist.js         # RESTful 路由 + 截图识别接口
+│  ├─ services/
+│  │  ├─ wc3Scan.js           # 色块定位、图片预处理、OCR、玩家名清洗
+│  │  └─ blacklistMatcher.js  # 名称归一化、精确/模糊匹配
 │  └─ utils/
 │     ├─ errors.js            # HttpError
 │     └─ validation.js        # 参数校验
@@ -44,11 +59,19 @@ blacklist/
 │  ├─ api/
 │  │  ├─ request.js           # Axios 封装、响应拦截器
 │  │  └─ blacklist.js         # 黑名单接口
-│  ├─ styles/index.css        # 全局样式
-│  ├─ views/BlacklistView.vue # 页面
+│  ├─ components/
+│  │  ├─ BlacklistFormDialog.vue  # 新增 / 编辑弹窗
+│  │  └─ Wc3ScanDialog.vue        # WC3 截图检测弹窗
+│  ├─ styles/
+│  │  ├─ index.scss           # 全局 SCSS
+│  │  └─ _dialogs.scss        # 弹窗标题共享 mixin
+│  ├─ views/BlacklistView.vue # 列表页面
 │  ├─ App.vue
 │  └─ main.js
-├─ docs/preview.png
+├─ docs/
+│  ├─ preview.png
+│  ├─ scan-preview.png
+│  └─ scan-upload.png
 ├─ index.html
 ├─ vite.config.js
 ├─ package.json
@@ -57,7 +80,7 @@ blacklist/
 
 ## 快速开始
 
-环境要求：Node.js >= 18.11，推荐使用 pnpm 9。
+环境要求：Node.js >= 18.17，推荐使用 pnpm 9。
 
 ```bash
 # 安装依赖
@@ -66,6 +89,8 @@ pnpm install
 # 同时启动 Koa API（3000）与 Vite 前端（5173）
 pnpm dev
 ```
+
+> 为避免 Windows / Node 20.9 下 `node --watch` 的 FSWatcher 崩溃，服务端默认关闭自动重启。修改后端代码后，重新执行一次 `pnpm dev` 即可。
 
 - 前端页面：<http://127.0.0.1:5173>
 - 后端 API：<http://127.0.0.1:3000/api/blacklist>
@@ -83,6 +108,7 @@ pnpm preview
 ```
 
 > `.npmrc` 中配置了 npmmirror 镜像与 `node-linker=hoisted`，如使用其他镜像可自行调整。
+> OCR 训练数据随 `@tesseract.js-data/eng` 一起安装，运行时不需要再访问外网。
 
 ### 可选环境变量
 
@@ -90,6 +116,33 @@ pnpm preview
 | --- | --- | --- |
 | `PORT` | `3000` | Koa 服务端口 |
 | `VITE_API_BASE_URL` | `/api` | 前端 Axios 的 baseURL |
+
+## WC3 大厅截图检测
+
+点击页面右上角「图片检测」，上传 WC3 大厅截图即可自动识别玩家名并比对黑名单。
+
+![截图检测结果](docs/scan-preview.png)
+
+处理流程：
+
+1. Sharp 统一图片格式与尺寸，利用玩家颜色块定位大厅中每一行玩家。
+2. 对每个玩家名区域做放大、反色、对比度增强和锐化。
+3. Tesseract.js 在本地完成 OCR，自动忽略电脑玩家和 UI 文本。
+4. 先精确匹配，再忽略标点/空格匹配，最后进行长度受限的模糊匹配。
+5. 结果中展示识别名单、命中原因、地图和记录时间。
+6. 如 OCR 识别有误，可在弹窗下方逐行修正玩家名并点击「重新匹配」。
+
+限制与说明：
+
+- 支持 PNG / JPG / WebP，单张不超过 8MB
+- 首次 OCR 需要初始化识别引擎，通常需 2–5 秒
+- 截图仅在服务器内存中处理，不会写入磁盘
+- OCR 与模糊匹配都不是 100% 准确，最终处理前建议人工确认
+- 当前内置英文 OCR 数据；中文、韩文或纯符号玩家名可能无法正确识别，可在修正名单中手动补充
+
+上传界面：
+
+![上传截图](docs/scan-upload.png)
 
 ## 数据字段
 
@@ -125,7 +178,7 @@ pnpm preview
 }
 ```
 
-失败时 `code` 为对应 HTTP 状态码（400 / 404 / 500），`data` 为 `null`，`msg` 为错误描述。
+失败时 `code` 为对应 HTTP 状态码（400 / 404 / 413 / 422 / 500），`data` 为 `null`，`msg` 为错误描述。
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
@@ -133,6 +186,48 @@ pnpm preview
 | POST | `/api/blacklist` | 新增，body：`{ name, map, reason }` |
 | PUT | `/api/blacklist/:id` | 修改未删除记录，body：`{ name, map, reason }` |
 | DELETE | `/api/blacklist/:id` | 软删除，将 `isDeleted` 置为 `true` |
+| POST | `/api/blacklist/scan` | 上传 WC3 截图并 OCR 匹配，body：`{ image: "data:image/png;base64,..." }` |
+| POST | `/api/blacklist/match` | 对修正后的名称重新匹配，body：`{ names: ["SANGUINIUS"] }` |
+
+### 截图检测响应
+
+```json
+{
+  "code": 0,
+  "data": {
+    "names": [
+      { "name": "LYDM1453", "confidence": 21, "source": "host" },
+      { "name": "SANGUINIUS", "confidence": 39, "source": "player" }
+    ],
+    "matches": [
+      {
+        "detectedName": "SANGUINIUS",
+        "recognizedText": "SANGUINIUS",
+        "matchType": "exact",
+        "similarity": 1,
+        "blacklist": {
+          "id": "9",
+          "name": "Sanguinius",
+          "map": "dalaran",
+          "reason": "游戏内挂机",
+          "addTime": "2026-11-04 22:37:37"
+        }
+      }
+    ],
+    "summary": {
+      "recognizedCount": 2,
+      "matchedCount": 1
+    }
+  },
+  "msg": "success"
+}
+```
+
+`matchType` 可能为：
+
+- `exact`：忽略大小写后完全一致
+- `normalized`：忽略空格、标点后一致，例如 `solt.....` 与 `solt`
+- `fuzzy`：OCR 错字场景的模糊命中，需人工复核
 
 ### 查询响应
 

@@ -1,14 +1,8 @@
 <script setup>
-import {
-  computed,
-  nextTick,
-  onBeforeUnmount,
-  onMounted,
-  reactive,
-  ref
-} from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
+  Camera,
   Delete,
   Document,
   EditPen,
@@ -19,12 +13,9 @@ import {
   Search
 } from '@element-plus/icons-vue'
 
-import {
-  createBlacklist,
-  deleteBlacklist,
-  getBlacklistList,
-  updateBlacklist
-} from '../api/blacklist'
+import { deleteBlacklist, getBlacklistList } from '../api/blacklist'
+import BlacklistFormDialog from '../components/BlacklistFormDialog.vue'
+import Wc3ScanDialog from '../components/Wc3ScanDialog.vue'
 
 const PAGE_SIZE = 10
 
@@ -34,71 +25,13 @@ const page = ref(1)
 const loading = ref(false)
 const filters = reactive({ name: '', map: '' })
 
-const dialogVisible = ref(false)
-const submitting = ref(false)
-const isEdit = ref(false)
-const editingId = ref('')
-const formRef = ref(null)
+const scanDialogVisible = ref(false)
+const formDialogRef = ref(null)
 const deletingId = ref(null)
-
-const form = reactive({
-  name: '',
-  map: '',
-  reason: ''
-})
 
 const hasFilters = computed(
   () => Boolean(filters.name.trim()) || Boolean(filters.map.trim())
 )
-
-const dialogTitle = computed(() =>
-  isEdit.value ? '编辑黑名单' : '新增黑名单'
-)
-
-const dialogSubtitle = computed(() =>
-  isEdit.value
-    ? '修改姓名、地图或加入黑名单的原因。'
-    : '请填写完整信息，ID 与添加时间将由系统自动生成。'
-)
-
-function createTextValidator(label, maxLength) {
-  return (_rule, value, callback) => {
-    const text = typeof value === 'string' ? value.trim() : ''
-
-    if (!text) {
-      callback(new Error(`请输入${label}`))
-      return
-    }
-
-    if (text.length > maxLength) {
-      callback(new Error(`${label}长度不能超过 ${maxLength} 个字符`))
-      return
-    }
-
-    callback()
-  }
-}
-
-const rules = {
-  name: [
-    {
-      validator: createTextValidator('姓名/名称', 50),
-      trigger: 'blur'
-    }
-  ],
-  map: [
-    {
-      validator: createTextValidator('地图名称', 50),
-      trigger: 'blur'
-    }
-  ],
-  reason: [
-    {
-      validator: createTextValidator('加入黑名单原因', 200),
-      trigger: 'blur'
-    }
-  ]
-}
 
 let searchTimer = null
 let latestRequestId = 0
@@ -168,78 +101,24 @@ async function fetchList() {
   }
 }
 
-function resetForm() {
-  form.name = ''
-  form.map = ''
-  form.reason = ''
-}
-
 function openCreateDialog() {
-  isEdit.value = false
-  editingId.value = ''
-  resetForm()
-  dialogVisible.value = true
-
-  nextTick(() => {
-    formRef.value?.clearValidate()
-  })
+  formDialogRef.value?.openCreate()
 }
 
 function openEditDialog(row) {
-  isEdit.value = true
-  editingId.value = row.id
-  form.name = row.name
-  form.map = row.map
-  form.reason = row.reason
-  dialogVisible.value = true
-
-  nextTick(() => {
-    formRef.value?.clearValidate()
-  })
+  formDialogRef.value?.openEdit(row)
 }
 
-function handleDialogClosed() {
-  resetForm()
-  editingId.value = ''
-  isEdit.value = false
-  formRef.value?.clearValidate()
+function openScanDialog() {
+  scanDialogVisible.value = true
 }
 
-async function handleSubmit() {
-  if (submitting.value) {
-    return
+async function handleDialogSaved({ mode }) {
+  if (mode === 'create') {
+    page.value = 1
   }
 
-  const valid = await formRef.value?.validate().catch(() => false)
-  if (!valid) {
-    return
-  }
-
-  const payload = {
-    name: form.name.trim(),
-    map: form.map.trim(),
-    reason: form.reason.trim()
-  }
-
-  submitting.value = true
-
-  try {
-    if (isEdit.value) {
-      await updateBlacklist(editingId.value, payload)
-      ElMessage.success('修改成功')
-    } else {
-      await createBlacklist(payload)
-      ElMessage.success('新增成功')
-      page.value = 1
-    }
-
-    dialogVisible.value = false
-    await fetchList()
-  } catch (error) {
-    // 请求错误已由 request.js 的响应拦截器统一 Toast 提示。
-  } finally {
-    submitting.value = false
-  }
+  await fetchList()
 }
 
 async function handleDelete(row) {
@@ -345,6 +224,15 @@ onBeforeUnmount(clearSearchTimer)
           <div class="toolbar-actions">
             <el-button
               type="primary"
+              class="scan-button"
+              :icon="Camera"
+              @click="openScanDialog"
+            >
+              图片检测
+            </el-button>
+            <el-button
+              type="primary"
+              plain
               class="add-button"
               :icon="Plus"
               @click="openCreateDialog"
@@ -477,94 +365,12 @@ onBeforeUnmount(clearSearchTimer)
       </main>
     </div>
 
-    <el-dialog
-      v-model="dialogVisible"
-      class="blacklist-dialog"
-      width="540px"
-      align-center
-      :close-on-click-modal="false"
-      :close-on-press-escape="!submitting"
-      :show-close="!submitting"
-      @closed="handleDialogClosed"
-    >
-      <template #header>
-        <div class="dialog-heading">
-          <div class="dialog-icon">
-            <el-icon :size="20">
-              <EditPen v-if="isEdit" />
-              <Plus v-else />
-            </el-icon>
-          </div>
-          <div>
-            <h3>{{ dialogTitle }}</h3>
-            <p>{{ dialogSubtitle }}</p>
-          </div>
-        </div>
-      </template>
-
-      <el-form
-        ref="formRef"
-        :model="form"
-        :rules="rules"
-        label-position="top"
-        class="blacklist-form"
-        @submit.prevent
-      >
-        <el-form-item label="姓名 / 名称" prop="name" required>
-          <el-input
-            v-model="form.name"
-            placeholder="请输入姓名或名称"
-            maxlength="50"
-            show-word-limit
-            clearable
-          />
-        </el-form-item>
-
-        <el-form-item label="地图" prop="map" required>
-          <el-input
-            v-model="form.map"
-            placeholder="请手动输入地图"
-            maxlength="50"
-            show-word-limit
-            clearable
-          />
-        </el-form-item>
-
-        <el-form-item label="加入黑名单原因" prop="reason" required>
-          <el-input
-            v-model="form.reason"
-            type="textarea"
-            placeholder="请说明加入黑名单的原因"
-            :rows="4"
-            maxlength="200"
-            show-word-limit
-            resize="none"
-          />
-        </el-form-item>
-      </el-form>
-
-      <template #footer>
-        <div class="dialog-footer">
-          <span class="required-hint"><em>*</em> 为必填项</span>
-          <div>
-            <el-button :disabled="submitting" @click="dialogVisible = false">
-              取消
-            </el-button>
-            <el-button
-              type="primary"
-              :loading="submitting"
-              @click="handleSubmit"
-            >
-              {{ isEdit ? '保存修改' : '确认新增' }}
-            </el-button>
-          </div>
-        </div>
-      </template>
-    </el-dialog>
+    <BlacklistFormDialog ref="formDialogRef" @saved="handleDialogSaved" />
+    <Wc3ScanDialog v-model="scanDialogVisible" />
   </div>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .page-shell {
   position: relative;
   isolation: isolate;
@@ -727,11 +533,22 @@ onBeforeUnmount(clearSearchTimer)
 }
 
 .toolbar-actions {
+  display: flex;
   flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.toolbar-actions :deep(.el-button + .el-button) {
+  margin-left: 0;
+}
+
+.scan-button {
+  box-shadow: 0 7px 15px rgba(79, 70, 229, 0.2);
 }
 
 .add-button {
-  box-shadow: 0 7px 15px rgba(79, 70, 229, 0.2);
+  background: #fff;
 }
 
 .table-wrap {
@@ -918,83 +735,6 @@ onBeforeUnmount(clearSearchTimer)
   justify-content: flex-end;
 }
 
-.dialog-heading {
-  display: flex;
-  align-items: center;
-  gap: 13px;
-  padding-right: 24px;
-}
-
-.dialog-icon {
-  display: grid;
-  flex: 0 0 auto;
-  width: 42px;
-  height: 42px;
-  color: #4f46e5;
-  background: #eef2ff;
-  border-radius: 12px;
-  place-items: center;
-}
-
-.dialog-heading h3 {
-  margin: 0;
-  color: #0f172a;
-  font-weight: 700;
-  font-size: 19px;
-  line-height: 1.35;
-}
-
-.dialog-heading p {
-  margin: 4px 0 0;
-  color: #64748b;
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.blacklist-form :deep(.el-form-item) {
-  margin-bottom: 20px;
-}
-
-.blacklist-form :deep(.el-form-item__label) {
-  padding-bottom: 7px;
-  color: #334155;
-  font-weight: 600;
-  font-size: 13px;
-}
-
-.blacklist-form :deep(.el-input__wrapper),
-.blacklist-form :deep(.el-textarea__inner) {
-  border-radius: 9px;
-  box-shadow: 0 0 0 1px #e2e8f0 inset;
-}
-
-.blacklist-form :deep(.el-input__wrapper:hover),
-.blacklist-form :deep(.el-textarea__inner:hover) {
-  box-shadow: 0 0 0 1px #c7d2fe inset;
-}
-
-.blacklist-form :deep(.el-input__wrapper.is-focus),
-.blacklist-form :deep(.el-textarea__inner:focus) {
-  box-shadow: 0 0 0 1px #6366f1 inset;
-}
-
-.dialog-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.required-hint {
-  color: #94a3b8;
-  font-size: 12px;
-}
-
-.required-hint em {
-  color: #ef4444;
-  font-style: normal;
-}
-
 @media (max-width: 860px) {
   .page-header {
     align-items: flex-start;
@@ -1018,9 +758,12 @@ onBeforeUnmount(clearSearchTimer)
   }
 
   .toolbar-actions {
+    display: grid;
     width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .scan-button,
   .add-button {
     width: 100%;
   }
@@ -1088,22 +831,5 @@ onBeforeUnmount(clearSearchTimer)
     gap: 4px;
   }
 
-  .dialog-footer {
-    align-items: stretch;
-    flex-direction: column-reverse;
-    gap: 12px;
-  }
-
-  .dialog-footer > div {
-    display: flex;
-  }
-
-  .dialog-footer .el-button {
-    flex: 1;
-  }
-
-  .required-hint {
-    text-align: center;
-  }
 }
 </style>

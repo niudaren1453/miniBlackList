@@ -45,7 +45,12 @@ app.use(async (ctx, next) => {
   }
 })
 
-app.use(bodyParser({ enableTypes: ['json'] }))
+app.use(
+  bodyParser({
+    enableTypes: ['json'],
+    jsonLimit: '12mb'
+  })
+)
 
 app.use(blacklistRouter.routes())
 app.use(blacklistRouter.allowedMethods({ throw: true }))
