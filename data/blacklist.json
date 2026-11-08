@@ -78,5 +78,37 @@
     "reason": "test",
     "addTime": "2026-11-08 18:12:17",
     "isDeleted": false
+  },
+  {
+    "id": "11",
+    "name": "Pratella",
+    "map": "dalaran",
+    "reason": "秒退",
+    "addTime": "2026-11-08 19:02:57",
+    "isDeleted": false
+  },
+  {
+    "id": "12",
+    "name": "Sebastian",
+    "map": "dalaran",
+    "reason": "开局秒退",
+    "addTime": "2026-11-08 19:56:45",
+    "isDeleted": false
+  },
+  {
+    "id": "13",
+    "name": "Antho06",
+    "map": "dalaran",
+    "reason": "priest装备是骷髅",
+    "addTime": "2026-11-08 21:26:35",
+    "isDeleted": false
+  },
+  {
+    "id": "14",
+    "name": "KingLeoriK1",
+    "map": "dalaran",
+    "reason": "noob",
+    "addTime": "2026-11-08 21:27:02",
+    "isDeleted": false
   }
 ]

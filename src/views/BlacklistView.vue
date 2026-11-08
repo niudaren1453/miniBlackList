@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import {
   Camera,
   Delete,
@@ -14,8 +15,24 @@ import {
 } from '@element-plus/icons-vue'
 
 import { deleteBlacklist, getBlacklistList } from '../api/blacklist'
+import { setLocale } from '../i18n'
 import BlacklistFormDialog from '../components/BlacklistFormDialog.vue'
 import Wc3ScanDialog from '../components/Wc3ScanDialog.vue'
+
+const { t, locale } = useI18n({ useScope: 'global' })
+
+const languageOptions = [
+  {
+    value: 'en-US',
+    label: 'EN',
+    titleKey: 'language.english'
+  },
+  {
+    value: 'zh-CN',
+    label: '中文',
+    titleKey: 'language.chinese'
+  }
+]
 
 const PAGE_SIZE = 10
 
@@ -113,6 +130,10 @@ function openScanDialog() {
   scanDialogVisible.value = true
 }
 
+function switchLanguage(nextLocale) {
+  setLocale(nextLocale)
+}
+
 async function handleDialogSaved({ mode }) {
   if (mode === 'create') {
     page.value = 1
@@ -124,12 +145,12 @@ async function handleDialogSaved({ mode }) {
 async function handleDelete(row) {
   try {
     await ElMessageBox.confirm(
-      `确定要删除「${row.name}」吗？删除后该记录将不再显示在列表中。`,
-      '删除确认',
+      t('table.deleteConfirm', { name: row.name }),
+      t('table.deleteTitle'),
       {
         type: 'warning',
-        confirmButtonText: '确认删除',
-        cancelButtonText: '取消',
+        confirmButtonText: t('table.confirmDelete'),
+        cancelButtonText: t('table.cancel'),
         closeOnClickModal: false
       }
     )
@@ -141,7 +162,7 @@ async function handleDelete(row) {
 
   try {
     await deleteBlacklist(row.id)
-    ElMessage.success('删除成功')
+    ElMessage.success(t('table.deleteSuccess'))
 
     if (records.value.length === 1 && page.value > 1) {
       page.value -= 1
@@ -177,8 +198,8 @@ onBeforeUnmount(clearSearchTimer)
             <el-icon :size="27"><Lock /></el-icon>
           </div>
           <div class="brand-copy">
-            <p class="eyebrow">Blacklist console</p>
-            <h1>黑名单管理</h1>
+            <p class="eyebrow">{{ t('app.eyebrow') }}</p>
+            <h1>{{ t('app.title') }}</h1>
             <!-- <p class="subtitle">
                 
               统一维护违规人员与所属地图，支持检索、编辑和软删除。
@@ -186,19 +207,44 @@ onBeforeUnmount(clearSearchTimer)
           </div>
         </div>
 
-        <div class="total-pill" aria-live="polite">
-          <span class="pulse-dot"></span>
-          <span>当前共 <strong>{{ total }}</strong> 条记录</span>
+        <div class="header-tools">
+          <div class="total-pill" aria-live="polite">
+            <span class="pulse-dot"></span>
+            <i18n-t keypath="app.totalRecords" tag="span">
+              <template #total>
+                <strong>{{ total }}</strong>
+              </template>
+            </i18n-t>
+          </div>
+
+          <div
+            class="language-switch"
+            role="group"
+            :aria-label="t('app.languageSwitch')"
+          >
+            <button
+              v-for="option in languageOptions"
+              :key="option.value"
+              type="button"
+              class="language-option"
+              :class="{ active: locale === option.value }"
+              :title="t(option.titleKey)"
+              :aria-pressed="locale === option.value"
+              @click="switchLanguage(option.value)"
+            >
+              {{ option.label }}
+            </button>
+          </div>
         </div>
       </header>
 
       <main class="content-card">
-        <section class="toolbar" aria-label="筛选与新增">
+        <section class="toolbar" :aria-label="t('toolbar.aria')">
           <div class="filter-group">
             <el-input
               v-model="filters.name"
               class="filter-input"
-              placeholder="搜索姓名/名称"
+              :placeholder="t('toolbar.searchName')"
               clearable
               :prefix-icon="Search"
               @input="scheduleSearch"
@@ -208,7 +254,7 @@ onBeforeUnmount(clearSearchTimer)
             <el-input
               v-model="filters.map"
               class="filter-input"
-              placeholder="搜索地图"
+              :placeholder="t('toolbar.searchMap')"
               clearable
               :prefix-icon="Search"
               @input="scheduleSearch"
@@ -216,9 +262,11 @@ onBeforeUnmount(clearSearchTimer)
               @keyup.enter="handleSearchNow"
             />
             <el-button type="primary" :icon="Search" @click="handleSearchNow">
-              查询
+              {{ t('toolbar.search') }}
             </el-button>
-            <el-button :icon="Refresh" @click="handleReset">重置</el-button>
+            <el-button :icon="Refresh" @click="handleReset">
+              {{ t('toolbar.reset') }}
+            </el-button>
           </div>
 
           <div class="toolbar-actions">
@@ -228,7 +276,7 @@ onBeforeUnmount(clearSearchTimer)
               :icon="Camera"
               @click="openScanDialog"
             >
-              图片检测
+              {{ t('toolbar.imageScan') }}
             </el-button>
             <el-button
               type="primary"
@@ -237,7 +285,7 @@ onBeforeUnmount(clearSearchTimer)
               :icon="Plus"
               @click="openCreateDialog"
             >
-              新增黑名单
+              {{ t('toolbar.add') }}
             </el-button>
           </div>
         </section>
@@ -249,13 +297,17 @@ onBeforeUnmount(clearSearchTimer)
             row-key="id"
             class="record-table"
           >
-            <el-table-column prop="id" label="ID" width="88">
+            <el-table-column prop="id" :label="t('table.id')" width="88">
               <template #default="{ row }">
                 <span class="id-badge">#{{ row.id }}</span>
               </template>
             </el-table-column>
 
-            <el-table-column prop="name" label="姓名 / 名称" width="170">
+            <el-table-column
+              prop="name"
+              :label="t('table.name')"
+              width="170"
+            >
               <template #default="{ row }">
                 <div class="name-cell">
                   <span
@@ -272,7 +324,7 @@ onBeforeUnmount(clearSearchTimer)
 
             <el-table-column
               prop="map"
-              label="地图"
+              :label="t('table.map')"
               width="180"
               show-overflow-tooltip
             >
@@ -286,7 +338,7 @@ onBeforeUnmount(clearSearchTimer)
 
             <el-table-column
               prop="reason"
-              label="加入黑名单原因"
+              :label="t('table.reason')"
               min-width="280"
               show-overflow-tooltip
             >
@@ -295,14 +347,18 @@ onBeforeUnmount(clearSearchTimer)
               </template>
             </el-table-column>
 
-            <el-table-column prop="addTime" label="添加时间" width="176">
+            <el-table-column
+              prop="addTime"
+              :label="t('table.addTime')"
+              width="176"
+            >
               <template #default="{ row }">
                 <span class="time-text">{{ row.addTime }}</span>
               </template>
             </el-table-column>
 
             <el-table-column
-              label="操作"
+              :label="t('table.actions')"
               width="158"
               fixed="right"
               align="right"
@@ -314,7 +370,7 @@ onBeforeUnmount(clearSearchTimer)
                   :icon="EditPen"
                   @click="openEditDialog(row)"
                 >
-                  编辑
+                  {{ t('table.edit') }}
                 </el-button>
                 <el-button
                   link
@@ -323,7 +379,7 @@ onBeforeUnmount(clearSearchTimer)
                   :loading="deletingId === row.id"
                   @click="handleDelete(row)"
                 >
-                  删除
+                  {{ t('table.delete') }}
                 </el-button>
               </template>
             </el-table-column>
@@ -333,12 +389,12 @@ onBeforeUnmount(clearSearchTimer)
                 <div class="empty-icon">
                   <el-icon :size="24"><Document /></el-icon>
                 </div>
-                <p>暂无黑名单记录</p>
+                <p>{{ t('table.empty') }}</p>
                 <span>
                   {{
                     hasFilters
-                      ? '没有找到匹配结果，试试调整筛选条件'
-                      : '点击“新增黑名单”添加第一条记录'
+                      ? t('table.emptyFiltered')
+                      : t('table.emptyHint')
                   }}
                 </span>
               </div>
@@ -349,7 +405,7 @@ onBeforeUnmount(clearSearchTimer)
         <footer class="table-footer">
           <span class="table-hint">
             <span class="hint-dot"></span>
-            仅展示未删除记录 · 按添加时间倒序
+            {{ t('table.footer') }}
           </span>
 
           <el-pagination
@@ -425,6 +481,57 @@ onBeforeUnmount(clearSearchTimer)
   justify-content: space-between;
   gap: 24px;
   margin-bottom: 24px;
+}
+
+.header-tools {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.language-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 999px;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+  backdrop-filter: blur(12px);
+}
+
+.language-option {
+  min-width: 38px;
+  padding: 6px 9px;
+  color: #64748b;
+  font-weight: 600;
+  font-size: 12px;
+  line-height: 1.2;
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
+
+  &:hover {
+    color: #4338ca;
+  }
+
+  &.active {
+    color: #fff;
+    background: #4f46e5;
+    box-shadow: 0 4px 10px rgba(79, 70, 229, 0.28);
+  }
+
+  &:focus-visible {
+    outline: 2px solid #a5b4fc;
+    outline-offset: 1px;
+  }
 }
 
 .brand-area {
@@ -742,6 +849,11 @@ onBeforeUnmount(clearSearchTimer)
     gap: 16px;
   }
 
+  .header-tools {
+    width: 100%;
+    justify-content: space-between;
+  }
+
   .toolbar {
     align-items: stretch;
     flex-direction: column;
@@ -799,7 +911,13 @@ onBeforeUnmount(clearSearchTimer)
   }
 
   .total-pill {
-    margin-left: 61px;
+    margin-left: 0;
+  }
+
+  .header-tools {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding-left: 61px;
   }
 
   .content-card {

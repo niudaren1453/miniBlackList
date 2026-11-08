@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import {
   Camera,
   CircleCheckFilled,
@@ -13,6 +14,8 @@ import {
   matchBlacklistNames,
   scanBlacklistImage
 } from '../api/blacklist'
+
+const { t } = useI18n({ useScope: 'global' })
 
 const props = defineProps({
   modelValue: {
@@ -88,13 +91,13 @@ function handleScanFileChange(uploadFile) {
   if (!file) return
 
   if (!SCAN_IMAGE_TYPES.includes(file.type)) {
-    ElMessage.error('仅支持 PNG、JPG、WebP 格式的图片')
+    ElMessage.error(t('scan.invalidType'))
     scanUploadRef.value?.clearFiles()
     return
   }
 
   if (file.size > SCAN_MAX_BYTES) {
-    ElMessage.error('图片大小不能超过 8MB')
+    ElMessage.error(t('scan.imageTooLarge'))
     scanUploadRef.value?.clearFiles()
     return
   }
@@ -157,16 +160,18 @@ async function handleScan() {
     scanNamesText.value = normalized.names.map((item) => item.name).join('\n')
 
     if (normalized.matches.length) {
-      ElMessage.warning(`检测到 ${normalized.matches.length} 条黑名单命中`)
+      ElMessage.warning(
+        t('scan.hitsFound', { count: normalized.matches.length })
+      )
     } else if (normalized.names.length) {
       ElMessage.success(
-        `识别到 ${normalized.names.length} 个名称，未命中黑名单`
+        t('scan.recognizedNoHits', { count: normalized.names.length })
       )
     } else {
-      ElMessage.warning('没有识别到玩家名，请尝试更清晰的大厅截图')
+      ElMessage.warning(t('scan.noNamesTitle'))
     }
   } catch (error) {
-    scanError.value = '截图识别失败，请更换清晰的 WC3 大厅截图后重试。'
+    scanError.value = t('scan.scanError')
   } finally {
     scanLoading.value = false
   }
@@ -184,13 +189,11 @@ function sameName(left, right) {
 }
 
 function matchTypeLabel(type) {
-  return (
-    {
-      exact: '精确命中',
-      normalized: '忽略标点',
-      fuzzy: '模糊命中'
-    }[type] || '已命中'
-  )
+  const key = ['exact', 'normalized', 'fuzzy'].includes(type)
+    ? type
+    : 'fallback'
+
+  return t(`scan.matchType.${key}`)
 }
 
 function matchTypeTag(type) {
@@ -219,17 +222,17 @@ async function handleRematch() {
     })
 
   if (!names.length) {
-    ElMessage.warning('请至少填写一个玩家名')
+    ElMessage.warning(t('scan.noNamesError'))
     return
   }
 
   if (names.length > 32) {
-    ElMessage.warning('单次最多匹配 32 个玩家名')
+    ElMessage.warning(t('scan.tooManyNames'))
     return
   }
 
   if (names.some((name) => name.length > 50)) {
-    ElMessage.warning('单个玩家名不能超过 50 个字符')
+    ElMessage.warning(t('scan.nameTooLong'))
     return
   }
 
@@ -267,9 +270,9 @@ async function handleRematch() {
     scanNamesText.value = names.join('\n')
 
     if (matches.length) {
-      ElMessage.warning(`重新匹配完成，发现 ${matches.length} 条命中`)
+      ElMessage.warning(t('scan.rematchHits', { count: matches.length }))
     } else {
-      ElMessage.success('重新匹配完成，未命中黑名单')
+      ElMessage.success(t('scan.rematchNoHits'))
     }
   } catch (error) {
     // 请求错误已由 request.js 的响应拦截器统一 Toast 提示。
@@ -303,8 +306,8 @@ watch(
           <el-icon :size="20"><Camera /></el-icon>
         </div>
         <div>
-          <h3>WC3 大厅截图检测</h3>
-          <p>上传大厅截图，自动识别玩家名并比对黑名单。</p>
+          <h3>{{ t('scan.title') }}</h3>
+          <p>{{ t('scan.subtitle') }}</p>
         </div>
       </div>
     </template>
@@ -324,8 +327,11 @@ watch(
           <div class="scan-drop-icon">
             <el-icon :size="30"><UploadFilled /></el-icon>
           </div>
-          <p>拖拽 WC3 大厅截图到这里，或 <em>点击选择</em></p>
-          <span>支持 PNG / JPG / WebP，单张不超过 8MB</span>
+          <p>
+            {{ t('scan.uploadPrefix') }}
+            <em>{{ t('scan.chooseFile') }}</em>
+          </p>
+          <span>{{ t('scan.uploadHint') }}</span>
         </div>
       </el-upload>
 
@@ -333,7 +339,7 @@ watch(
         <img
           :src="scanPreviewUrl"
           class="scan-preview"
-          alt="WC3 大厅截图预览"
+          :alt="t('scan.imageAlt')"
         />
         <div class="scan-preview-edge">
           <span class="scan-file-name">{{ scanFile.name }}</span>
@@ -343,7 +349,7 @@ watch(
             :disabled="scanLoading"
             @click="clearScanFile"
           >
-            重新选择
+            {{ t('scan.chooseAnother') }}
           </el-button>
         </div>
 
@@ -351,8 +357,8 @@ watch(
           <div class="scan-spinner">
             <el-icon class="is-loading" :size="28"><Loading /></el-icon>
           </div>
-          <strong>正在识别大厅玩家…</strong>
-          <span>首次识别需要加载 OCR 模型，请稍候</span>
+          <strong>{{ t('scan.scanningTitle') }}</strong>
+          <span>{{ t('scan.scanningHint') }}</span>
         </div>
       </div>
 
@@ -373,18 +379,20 @@ watch(
             <strong>
               {{
                 hasScanMatches
-                  ? `发现 ${scanResult.matches.length} 条黑名单命中`
-                  : '未命中黑名单'
+                  ? t('scan.hitTitle', {
+                      count: scanResult.matches.length
+                    })
+                  : t('scan.noHits')
               }}
             </strong>
             <p>
-              已识别 {{ scanResult.names.length }} 个大厅名称，可在下方修正后重新匹配。
+              {{ t('scan.recognizedText', { count: scanResult.names.length }) }}
             </p>
           </div>
         </div>
 
         <section class="scan-section">
-          <h4>识别到的名称</h4>
+          <h4>{{ t('scan.recognizedTitle') }}</h4>
           <div v-if="scanResult.names.length" class="scan-name-list">
             <span
               v-for="(item, index) in scanResult.names"
@@ -394,16 +402,16 @@ watch(
             >
               <span class="scan-name-dot"></span>
               {{ item.name }}
-              <em v-if="item.source === 'host'">房主</em>
+              <em v-if="item.source === 'host'">{{ t('scan.host') }}</em>
             </span>
           </div>
           <p v-else class="scan-empty">
-            没有识别到玩家名，请在下方手动补充后重新匹配。
+            {{ t('scan.emptyNames') }}
           </p>
         </section>
 
         <section v-if="hasScanMatches" class="scan-section">
-          <h4>黑名单命中</h4>
+          <h4>{{ t('scan.hitsTitle') }}</h4>
           <article
             v-for="match in scanResult.matches"
             :key="match.blacklist.id"
@@ -418,7 +426,7 @@ watch(
                   v-if="!sameName(match.detectedName, match.blacklist.name)"
                   class="scan-match-ocr"
                 >
-                  识别为 {{ match.detectedName }}
+                  {{ t('scan.recognizedAs', { name: match.detectedName }) }}
                 </span>
               </div>
               <el-tag
@@ -431,8 +439,10 @@ watch(
             </div>
 
             <div class="scan-match-meta">
-              <span>地图：{{ match.blacklist.map }}</span>
-              <span>记录时间：{{ match.blacklist.addTime }}</span>
+              <span>{{ t('scan.map', { map: match.blacklist.map }) }}</span>
+              <span>
+                {{ t('scan.addedAt', { time: match.blacklist.addTime }) }}
+              </span>
             </div>
 
             <p class="scan-match-reason">{{ match.blacklist.reason }}</p>
@@ -442,8 +452,8 @@ watch(
         <section class="scan-section scan-manual">
           <div class="scan-section-title">
             <div>
-              <h4>修正识别名单</h4>
-              <p>每行一个玩家名，识别有误时可修改后重新匹配。</p>
+              <h4>{{ t('scan.manualTitle') }}</h4>
+              <p>{{ t('scan.manualHint') }}</p>
             </div>
             <el-button
               type="primary"
@@ -451,7 +461,7 @@ watch(
               :loading="scanRematching"
               @click="handleRematch"
             >
-              重新匹配
+              {{ t('scan.rematch') }}
             </el-button>
           </div>
           <el-input
@@ -459,7 +469,7 @@ watch(
             type="textarea"
             :rows="4"
             resize="none"
-            placeholder="每行输入一个玩家名"
+            :placeholder="t('scan.manualPlaceholder')"
           />
         </section>
       </div>
@@ -468,11 +478,11 @@ watch(
     <template #footer>
       <div class="scan-footer">
         <span class="scan-footer-tip">
-          截图仅用于本次识别，不会写入磁盘。
+          {{ t('scan.privacy') }}
         </span>
         <div class="scan-footer-actions">
           <el-button :disabled="scanLoading" @click="visible = false">
-            关闭
+            {{ t('scan.close') }}
           </el-button>
           <el-button
             v-if="!scanResult"
@@ -481,7 +491,7 @@ watch(
             :disabled="!scanFile"
             @click="handleScan"
           >
-            识别并匹配
+            {{ t('scan.scanAndMatch') }}
           </el-button>
           <el-button
             v-else
@@ -489,7 +499,7 @@ watch(
             :disabled="scanLoading"
             @click="clearScanFile"
           >
-            换一张
+            {{ t('scan.anotherImage') }}
           </el-button>
         </div>
       </div>

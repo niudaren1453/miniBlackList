@@ -1,11 +1,13 @@
 <script setup>
 import { computed, nextTick, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import { EditPen, Plus } from '@element-plus/icons-vue'
 
 import { createBlacklist, updateBlacklist } from '../api/blacklist'
 
 const emit = defineEmits(['saved'])
+const { t } = useI18n({ useScope: 'global' })
 
 const dialogVisible = ref(false)
 const submitting = ref(false)
@@ -20,26 +22,31 @@ const form = reactive({
 })
 
 const dialogTitle = computed(() =>
-  isEdit.value ? '编辑黑名单' : '新增黑名单'
+  t(isEdit.value ? 'form.editTitle' : 'form.createTitle')
 )
 
 const dialogSubtitle = computed(() =>
-  isEdit.value
-    ? '修改姓名、地图或加入黑名单的原因。'
-    : '请填写完整信息，ID 与添加时间将由系统自动生成。'
+  t(isEdit.value ? 'form.editSubtitle' : 'form.createSubtitle')
 )
 
-function createTextValidator(label, maxLength) {
+function createTextValidator(labelKey, maxLength, requiredKey) {
   return (_rule, value, callback) => {
     const text = typeof value === 'string' ? value.trim() : ''
 
     if (!text) {
-      callback(new Error(`请输入${label}`))
+      callback(new Error(t(requiredKey)))
       return
     }
 
     if (text.length > maxLength) {
-      callback(new Error(`${label}长度不能超过 ${maxLength} 个字符`))
+      callback(
+        new Error(
+          t('form.validation.maxLength', {
+            label: t(labelKey),
+            max: maxLength
+          })
+        )
+      )
       return
     }
 
@@ -50,19 +57,31 @@ function createTextValidator(label, maxLength) {
 const rules = {
   name: [
     {
-      validator: createTextValidator('姓名/名称', 50),
+      validator: createTextValidator(
+        'form.nameField',
+        50,
+        'form.validation.nameRequired'
+      ),
       trigger: 'blur'
     }
   ],
   map: [
     {
-      validator: createTextValidator('地图名称', 50),
+      validator: createTextValidator(
+        'form.mapField',
+        50,
+        'form.validation.mapRequired'
+      ),
       trigger: 'blur'
     }
   ],
   reason: [
     {
-      validator: createTextValidator('加入黑名单原因', 200),
+      validator: createTextValidator(
+        'form.reasonField',
+        200,
+        'form.validation.reasonRequired'
+      ),
       trigger: 'blur'
     }
   ]
@@ -127,10 +146,10 @@ async function handleSubmit() {
   try {
     if (mode === 'update') {
       await updateBlacklist(editingId.value, payload)
-      ElMessage.success('修改成功')
+      ElMessage.success(t('form.updateSuccess'))
     } else {
       await createBlacklist(payload)
-      ElMessage.success('新增成功')
+      ElMessage.success(t('form.createSuccess'))
     }
 
     dialogVisible.value = false
@@ -182,31 +201,31 @@ defineExpose({
       class="blacklist-form"
       @submit.prevent
     >
-      <el-form-item label="姓名 / 名称" prop="name" required>
+      <el-form-item :label="t('form.nameLabel')" prop="name" required>
         <el-input
           v-model="form.name"
-          placeholder="请输入姓名或名称"
+          :placeholder="t('form.namePlaceholder')"
           maxlength="50"
           show-word-limit
           clearable
         />
       </el-form-item>
 
-      <el-form-item label="地图" prop="map" required>
+      <el-form-item :label="t('form.mapLabel')" prop="map" required>
         <el-input
           v-model="form.map"
-          placeholder="请手动输入地图"
+          :placeholder="t('form.mapPlaceholder')"
           maxlength="50"
           show-word-limit
           clearable
         />
       </el-form-item>
 
-      <el-form-item label="加入黑名单原因" prop="reason" required>
+      <el-form-item :label="t('form.reasonLabel')" prop="reason" required>
         <el-input
           v-model="form.reason"
           type="textarea"
-          placeholder="请说明加入黑名单的原因"
+          :placeholder="t('form.reasonPlaceholder')"
           :rows="4"
           maxlength="200"
           show-word-limit
@@ -217,17 +236,19 @@ defineExpose({
 
     <template #footer>
       <div class="dialog-footer">
-        <span class="required-hint"><em>*</em> 为必填项</span>
+        <span class="required-hint">
+          <em>*</em> {{ t('form.requiredHint') }}
+        </span>
         <div>
           <el-button :disabled="submitting" @click="dialogVisible = false">
-            取消
+            {{ t('form.cancel') }}
           </el-button>
           <el-button
             type="primary"
             :loading="submitting"
             @click="handleSubmit"
           >
-            {{ isEdit ? '保存修改' : '确认新增' }}
+            {{ isEdit ? t('form.save') : t('form.create') }}
           </el-button>
         </div>
       </div>

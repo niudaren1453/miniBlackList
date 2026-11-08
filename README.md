@@ -1,5 +1,7 @@
 # 黑名单管理系统
 
+[English](README.en.md) | 简体中文
+
 基于 **Vue 3 + Element Plus + Axios + Koa 2** 的黑名单管理页面，后端以本地 JSON 文件持久化数据，完整实现搜索、分页、新增、修改与软删除。新增 **WC3 大厅截图检测**：上传截图后自动识别玩家名并匹配黑名单。
 
 ![页面预览](docs/preview.png)
@@ -19,15 +21,32 @@
 - **WC3 大厅截图 OCR**：自动定位双方玩家、识别玩家名，并返回黑名单命中原因
 - OCR 结果可人工修正后重新匹配；截图只在内存中处理，不落盘
 - 前端样式使用 **SCSS**，新增/编辑与截图检测均拆分为独立组件
+- 内置 **中文 / English** 国际化，默认英文，右上角可切换并记住选择
 
 ## 技术栈
 
 | 端 | 技术 |
 | --- | --- |
-| 前端 | Vue 3、Vite 5、Element Plus、Axios、SCSS |
+| 前端 | Vue 3、Vite 5、Element Plus、Axios、SCSS、Vue I18n |
 | 后端 | Koa 2、@koa/router、@koa/cors、koa-bodyparser、async-lock |
 | 截图识别 | Tesseract.js 5、Sharp、本地英文训练数据 |
 | 持久化 | 本地 JSON 文件 `data/blacklist.json` |
+
+## 国际化
+
+页面首次访问默认显示英文，右上角可在 `EN` 与 `中文` 之间切换。
+
+- 使用 `vue-i18n` 管理文案，语言包位于 `src/i18n/locales/`
+- Element Plus 组件语言随页面同步切换
+- 同时更新 `<html lang>` 和浏览器标签页标题
+- 语言选择保存在 `localStorage` 的 `blacklist-locale` 键中
+- 如需恢复默认英文，可在浏览器控制台执行：
+  ```js
+  localStorage.removeItem('blacklist-locale')
+  location.reload()
+  ```
+
+![English UI](docs/i18n-preview.png)
 
 ## 前端组件
 
@@ -57,11 +76,16 @@ blacklist/
 │     └─ validation.js        # 参数校验
 ├─ src/
 │  ├─ api/
-│  │  ├─ request.js           # Axios 封装、响应拦截器
+│  │  ├─ request.js           # Axios 封装、响应拦截器（国际化错误提示）
 │  │  └─ blacklist.js         # 黑名单接口
 │  ├─ components/
 │  │  ├─ BlacklistFormDialog.vue  # 新增 / 编辑弹窗
 │  │  └─ Wc3ScanDialog.vue        # WC3 截图检测弹窗
+│  ├─ i18n/
+│  │  ├─ index.js             # i18n 初始化、语言切换与持久化
+│  │  └─ locales/
+│  │     ├─ en-US.js          # 英文文案（默认）
+│  │     └─ zh-CN.js          # 中文文案
 │  ├─ styles/
 │  │  ├─ index.scss           # 全局 SCSS
 │  │  └─ _dialogs.scss        # 弹窗标题共享 mixin
@@ -70,6 +94,7 @@ blacklist/
 │  └─ main.js
 ├─ docs/
 │  ├─ preview.png
+│  ├─ i18n-preview.png
 │  ├─ scan-preview.png
 │  └─ scan-upload.png
 ├─ index.html
