@@ -1,0 +1,74 @@
+﻿STRING 1
+{
+玩家 1
+}
+
+STRING 2
+{
+势力 1
+}
+
+STRING 3
+// 技能: A000 (提升攻击力), Researchtip (提示工具 - 学习)
+{
+111
+}
+
+STRING 4
+// 技能: A000 (提升攻击力), Researchubertip (提示工具 - 学习 - 扩展)
+{
+1111
+}
+
+STRING 7
+// 技能: A000 (提升攻击力), Name (名字)
+{
+提升攻击力
+}
+
+STRING 10
+// 技能: A003 (物品攻击力加成), Name (名字)
+{
+物品攻击力加成
+}
+
+STRING 11
+// 技能: A003 (物品攻击力加成), Researchtip (提示工具 - 学习)
+{
+111111111
+}
+
+STRING 12
+// 技能: A003 (物品攻击力加成), Researchubertip (提示工具 - 学习 - 扩展)
+{
+11111111
+}
+
+STRING 15
+// 科技: R000 (钢铁铸剑,精钢铸剑,秘银铸剑), effect1 (效果 1)
+{
+ratx
+}
+
+STRING 16
+{
+50 maximum
+}
+
+STRING 17
+{
+2222
+}
+
+STRING 18
+// 物品: RC01 (reduce CD), Tip (提示工具 - 基础)
+{
+购买防护之戒+3减少cd
+}
+
+STRING 19
+// 物品: RC01 (reduce CD), Name (名字)
+{
+reduce CD
+}
+
