@@ -1,7 +1,9 @@
 'use strict'
 
+const { normalizeListType } = require('../utils/listTypes')
+
 /**
- * 黑名单匹配使用的归一化：全角转半角、去零宽字符、合并空格、忽略大小写。
+ * 名单匹配使用的归一化：全角转半角、去零宽字符、合并空格、忽略大小写。
  */
 function normalizeName(value) {
   return String(value ?? '')
@@ -125,7 +127,7 @@ function matchVariant(detectedName, activeRecords) {
 }
 
 /**
- * 针对 OCR 结果和黑名单记录做匹配。
+ * 针对 OCR 结果和名单记录做匹配。
  * 优先精确匹配，其次忽略标点/空格，最后才使用长度受限的模糊匹配。
  */
 function matchNames(detectedNames, records) {
@@ -158,9 +160,10 @@ function matchNames(detectedNames, records) {
           recognizedText: fullName,
           matchType: result.matchType,
           similarity: Number(result.similarity.toFixed(3)),
-          blacklist: {
+          record: {
             id: record.id,
             name: record.name,
+            listType: normalizeListType(record.listType),
             map: record.map,
             reason: record.reason,
             addTime: record.addTime

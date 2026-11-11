@@ -5,6 +5,7 @@ const path = require('node:path')
 const AsyncLock = require('async-lock')
 
 const { HttpError } = require('./utils/errors')
+const { normalizeListType } = require('./utils/listTypes')
 
 const DATA_FILE = path.join(__dirname, '..', 'data', 'blacklist.json')
 const LOCK_KEY = 'blacklist-file'
@@ -35,14 +36,32 @@ async function readRecords() {
   try {
     records = content ? JSON.parse(content) : []
   } catch (error) {
-    throw new Error(`黑名单数据文件不是合法 JSON：${DATA_FILE}`)
+    throw new Error(`名单数据文件不是合法 JSON：${DATA_FILE}`)
   }
 
   if (!Array.isArray(records)) {
-    throw new Error(`黑名单数据文件必须为 JSON 数组：${DATA_FILE}`)
+    throw new Error(`名单数据文件必须为 JSON 数组：${DATA_FILE}`)
   }
 
-  return records
+  // 兼容早期没有 listType 的数据：统一补成 black。
+  let migrated = false
+  const normalized = records.map((record) => {
+    const safeRecord = record && typeof record === 'object' ? record : {}
+    const listType = normalizeListType(safeRecord.listType)
+
+    if (safeRecord.listType !== listType) {
+      migrated = true
+      return { ...safeRecord, listType }
+    }
+
+    return safeRecord
+  })
+
+  if (migrated) {
+    await writeRecords(normalized)
+  }
+
+  return normalized
 }
 
 async function writeRecords(records) {
@@ -89,7 +108,7 @@ async function listRecords() {
 /**
  * 新增记录，自增字符串 id 从全部记录（含已软删）的最大数字 id 递增。
  */
-async function createRecord({ name, map, reason }) {
+async function createRecord({ name, map, reason, listType }) {
   return fileLock.acquire(LOCK_KEY, async () => {
     const records = await readRecords()
     const record = {
@@ -97,6 +116,7 @@ async function createRecord({ name, map, reason }) {
       name,
       map,
       reason,
+      listType: normalizeListType(listType),
       addTime: formatDateTime(),
       isDeleted: false
     }
@@ -109,9 +129,9 @@ async function createRecord({ name, map, reason }) {
 }
 
 /**
- * 修改未删除记录，仅允许更新 name、map、reason。
+ * 修改未删除记录，允许更新 name、map、reason、listType。
  */
-async function updateRecord(id, { name, map, reason }) {
+async function updateRecord(id, { name, map, reason, listType }) {
   return fileLock.acquire(LOCK_KEY, async () => {
     const records = await readRecords()
     const index = records.findIndex(
@@ -126,7 +146,8 @@ async function updateRecord(id, { name, map, reason }) {
       ...records[index],
       name,
       map,
-      reason
+      reason,
+      listType: normalizeListType(listType)
     }
 
     records[index] = updated

@@ -1,11 +1,12 @@
 'use strict'
 
 const { HttpError } = require('./errors')
+const { LIST_TYPES, isListType } = require('./listTypes')
 
 const FIELD_LABELS = {
   name: '姓名/名称',
   map: '所属区域/地图',
-  reason: '加入黑名单原因'
+  reason: '加入名单原因'
 }
 
 /**
@@ -39,11 +40,43 @@ function parseBlacklistPayload(body) {
     throw new HttpError(400, '请求体必须为 JSON 对象')
   }
 
+  // 旧客户端没有传 listType 时按黑名单处理，保持向后兼容。
+  const listType =
+    body.listType === undefined || body.listType === null
+      ? 'black'
+      : String(body.listType).trim().toLowerCase()
+
+  if (!isListType(listType)) {
+    throw new HttpError(400, '名单类型必须为 black 或 white')
+  }
+
   return {
     name: normalizeText(body.name, 'name', 50),
     map: normalizeText(body.map, 'map', 50),
-    reason: normalizeText(body.reason, 'reason', 200)
+    reason: normalizeText(body.reason, 'reason', 200),
+    listType
   }
+}
+
+/**
+ * 列表筛选参数：all/空 表示全部，black / white 表示指定名单类型。
+ */
+function parseListTypeFilter(value) {
+  if (value === undefined || value === null || value === '') {
+    return null
+  }
+
+  const listType = String(value).trim().toLowerCase()
+
+  if (listType === 'all') {
+    return null
+  }
+
+  if (!LIST_TYPES.includes(listType)) {
+    throw new HttpError(400, 'listType 必须为 black、white 或 all')
+  }
+
+  return listType
 }
 
 function parsePositiveInteger(value, field, fallback) {
@@ -183,6 +216,7 @@ function parseNameListPayload(body) {
 module.exports = {
   normalizeText,
   parseBlacklistPayload,
+  parseListTypeFilter,
   parsePagination,
   normalizeQueryText,
   parseImageDataUrl,
