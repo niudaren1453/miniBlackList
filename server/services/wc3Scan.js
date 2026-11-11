@@ -92,8 +92,11 @@ async function prepareImage(buffer) {
     throw new HttpError(400, '图片尺寸信息无效')
   }
 
-  if (metadata.width < 500 || metadata.height < 250) {
-    throw new HttpError(400, '图片尺寸过小，请上传完整的 WC3 大厅截图')
+  if (metadata.width < 300 || metadata.height < 40) {
+    throw new HttpError(
+      400,
+      '图片尺寸过小，请上传 WC3 大厅截图或玩家行截图'
+    )
   }
 
   const normalized = await sharp(buffer, {
@@ -119,12 +122,40 @@ async function prepareImage(buffer) {
 }
 
 /**
+ * 去掉 1 像素宽的连接线，避免玩家色块和边框连成一个大组件后漏检。
+ */
+function erodeMask(mask, width, height) {
+  const result = new Uint8Array(mask.length)
+
+  for (let y = 1; y < height - 1; y += 1) {
+    for (let x = 1; x < width - 1; x += 1) {
+      const index = y * width + x
+
+      if (
+        mask[index] &&
+        mask[index - 1] &&
+        mask[index + 1] &&
+        mask[index - width] &&
+        mask[index + width]
+      ) {
+        result[index] = 1
+      }
+    }
+  }
+
+  return result
+}
+
+/**
  * 通过玩家颜色块定位大厅里的每一行玩家。
  * WC3 的玩家色块是近似正方形的高饱和色块，稳定出现在玩家名左侧。
  */
 function findPlayerColorSquares(raw, info) {
   const { width, height, channels } = info
-  const mask = new Uint8Array(width * height)
+  const isSingleRow = height < 180
+  const minYRatio = isSingleRow ? 0.02 : 0.12
+  const maxYRatio = isSingleRow ? 0.98 : 0.92
+  let mask = new Uint8Array(width * height)
 
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
@@ -140,6 +171,8 @@ function findPlayerColorSquares(raw, info) {
       }
     }
   }
+
+  mask = erodeMask(mask, width, height)
 
   const seen = new Uint8Array(width * height)
   const stack = []
@@ -205,8 +238,8 @@ function findPlayerColorSquares(raw, info) {
         fill >= 0.5 &&
         ratio >= 0.55 &&
         ratio <= 1.6 &&
-        yRatio > 0.12 &&
-        yRatio < 0.92
+        yRatio > minYRatio &&
+        yRatio < maxYRatio
       ) {
         squares.push({ x: minX, y: minY, w, h })
       }
@@ -285,7 +318,7 @@ function isNonPlayerLabel(value) {
 
   // OCR 读取“电脑(普通)”时经常得到类似 "ERB (EIE)" 的短标签。
   if (/^[A-Z]{2,4}\s*\(\s*[A-Z]{2,4}\s*\)$/i.test(value)) return true
-  if (/^\d+%$/.test(value)) return true
+  if (/^\d+%?$/.test(value)) return true
 
   return false
 }
@@ -343,7 +376,7 @@ async function cropNameRegion(image, square, baseSquareWidth) {
   const top = Math.max(0, square.y - Math.round(square.h * 0.8))
   const width = Math.min(
     image.width - left,
-    Math.max(200, Math.min(420, Math.round(baseSquareWidth * 11.3)))
+    Math.max(200, Math.min(300, Math.round(baseSquareWidth * 11.3)))
   )
   const height = Math.min(
     image.height - top,
@@ -366,7 +399,7 @@ async function cropNameRegion(image, square, baseSquareWidth) {
 
 async function recognizeRows(image, squares) {
   const widths = squares.filter((square) => !square.inferred).map((square) => square.w)
-  const baseSquareWidth = percentile(widths, 0.25)
+  const baseSquareWidth = percentile(widths, 0.5)
   const names = []
 
   return scanLock.acquire('wc3-lobby-ocr', async () => {

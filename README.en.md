@@ -98,6 +98,7 @@ blacklist/
 ├─ docs/
 │  ├─ preview.png
 │  ├─ i18n-preview.png
+│  ├─ player-row-example.png
 │  ├─ scan-preview.png
 │  └─ scan-upload.png
 ├─ index.html
@@ -148,21 +149,27 @@ pnpm preview
 
 ## WC3 Lobby Screenshot Scanning
 
-Click **Scan screenshot** in the toolbar, then upload a WC3 lobby screenshot. The app recognizes player names and checks them against both the whitelist and blacklist.
+Click **Scan screenshot** in the toolbar and upload the full WC3 lobby screenshot. The app recognizes every player row and extracts only the player names, ignoring UI text such as the race and `100%`.
+
+If one row is obscured by the UI and fails recognition, you can crop that single player row and upload it for better accuracy. The row below is recognized as `KUROSHIRO789`:
+
+![Optional player-row screenshot](docs/player-row-example.png)
 
 ![Screenshot scanning result](docs/scan-preview.png)
 
 Processing flow:
 
-1. Sharp normalizes the image format and size, then uses player color blocks to locate each player row.
-2. Each player-name region is enlarged, inverted, contrast-enhanced, and sharpened.
-3. Tesseract.js performs OCR locally and automatically ignores computer players and UI text.
-4. Names are matched exactly first, then with punctuation / whitespace ignored, and finally with length-limited fuzzy matching.
-5. Matches are grouped into whitelist and blacklist sections with reasons, maps, and timestamps.
-6. If OCR made a mistake, correct the names line by line in the dialog and click **Search again**.
+1. Sharp normalizes the image format and size, then uses each row's player color block to locate players.
+2. Morphological erosion removes thin UI borders that can merge with a color block and hide a row (for example, the purple player).
+3. Only the name area to the right of each color block is cropped, excluding race, random, and percentage fields.
+4. Each player-name region is enlarged, inverted, contrast-enhanced, and sharpened.
+5. Tesseract.js performs OCR locally and filters out computer players and UI noise.
+6. Names are matched exactly first, then with punctuation / whitespace ignored, and finally with length-limited fuzzy matching.
+7. Matches are grouped into whitelist and blacklist sections; OCR mistakes can be corrected manually and matched again.
 
 Limitations:
 
+- Supports full lobby screenshots and single player-row screenshots; minimum size is 300 × 40
 - Supports PNG / JPG / WebP up to 8 MB
 - The first OCR request needs to initialize the engine, usually taking 2–5 seconds
 - Screenshots are processed in server memory and are never written to disk

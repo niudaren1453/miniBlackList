@@ -75,10 +75,11 @@ export default {
   scan: {
     title: 'WC3 Lobby Screenshot Check',
     subtitle:
-      'Upload a lobby screenshot to recognize player names and match them against the whitelist and blacklist.',
+      'Upload a WC3 lobby screenshot to recognize every player row and match both lists. Single-row screenshots are also supported.',
     uploadPrefix: 'Drag a WC3 lobby screenshot here, or',
     chooseFile: 'click to choose',
-    uploadHint: 'PNG / JPG / WebP, up to 8MB',
+    uploadHint:
+      'Full lobby or single player row · PNG / JPG / WebP, up to 8MB',
     imageAlt: 'WC3 lobby screenshot preview',
     chooseAnother: 'Choose another',
     scanningTitle: 'Recognizing lobby players…',

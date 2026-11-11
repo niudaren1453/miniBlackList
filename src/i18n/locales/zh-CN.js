@@ -72,10 +72,10 @@ export default {
   },
   scan: {
     title: 'WC3 大厅截图检测',
-    subtitle: '上传大厅截图，自动识别玩家名并比对白名单和黑名单。',
+    subtitle: '上传 WC3 大厅截图，逐行识别玩家名并比对白名单和黑名单；也支持单个玩家行截图。',
     uploadPrefix: '拖拽 WC3 大厅截图到这里，或',
     chooseFile: '点击选择',
-    uploadHint: '支持 PNG / JPG / WebP，单张不超过 8MB',
+    uploadHint: '支持完整大厅截图或单个玩家行 · PNG / JPG / WebP，最大 8MB',
     imageAlt: 'WC3 大厅截图预览',
     chooseAnother: '重新选择',
     scanningTitle: '正在识别大厅玩家…',
