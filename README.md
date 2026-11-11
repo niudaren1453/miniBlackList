@@ -1,24 +1,26 @@
-# 黑名单管理系统
+# 名单管理系统
 
 [English](README.en.md) | 简体中文
 
-基于 **Vue 3 + Element Plus + Axios + Koa 2** 的黑名单管理页面，后端以本地 JSON 文件持久化数据，完整实现搜索、分页、新增、修改与软删除。新增 **WC3 大厅截图检测**：上传截图后自动识别玩家名并匹配黑名单。
+基于 **Vue 3 + Element Plus + Axios + Koa 2** 的名单管理页面，支持 **黑名单 / 白名单** 两种类型，后端以本地 JSON 文件持久化数据，完整实现搜索、类型筛选、分页、新增、修改与软删除。内置 **WC3 大厅截图检测**：上传截图后自动识别玩家名，并同时匹配白名单和黑名单。
 
-![页面预览](docs/preview.png)
+![页面预览](docs/i18n-preview.png)
 
 ## 功能特性
 
 - 表格仅展示 `isDeleted !== true` 的记录，按 `addTime` 倒序排列
+- 支持按名单类型筛选：全部 / 黑名单 / 白名单
 - 每页固定 10 条，支持页码切换
 - 按 `name` 或 `map` 模糊搜索，OR 关系、大小写不敏感
 - 搜索输入 300ms 防抖，空值返回全部
-- 新增 / 编辑弹窗表单，前后端双重校验
+- 新增 / 编辑弹窗可选择名单类型，前后端双重校验
+- 黑名单姓名显示为红色、白名单姓名显示为绿色，并提供类型标签
 - 删除前二次确认，软删除后记录保留在 JSON 文件中
 - 请求统一 `loading`，成功 / 失败均有 Toast 提示
 - 自增字符串 ID，删除后不复用；`addTime` 由后端生成
 - `async-lock` 串行化读写，避免并发写入丢失数据
-- 首次启动自动创建 `data/blacklist.json`
-- **WC3 大厅截图 OCR**：自动定位双方玩家、识别玩家名，并返回黑名单命中原因
+- 首次启动自动创建 `data/blacklist.json`，旧记录自动补全为黑名单
+- **WC3 大厅截图 OCR**：自动定位双方玩家、识别玩家名，并分别返回白名单 / 黑名单命中原因
 - OCR 结果可人工修正后重新匹配；截图只在内存中处理，不落盘
 - 前端样式使用 **SCSS**，新增/编辑与截图检测均拆分为独立组件
 - 内置 **中文 / English** 国际化，默认英文，右上角可切换并记住选择
@@ -46,15 +48,13 @@
   location.reload()
   ```
 
-![English UI](docs/i18n-preview.png)
-
 ## 前端组件
 
 | 组件 | 职责 |
 | --- | --- |
-| `views/BlacklistView.vue` | 列表、搜索、分页、删除和页面布局 |
-| `components/BlacklistFormDialog.vue` | 新增 / 编辑黑名单弹窗、表单校验和提交 |
-| `components/Wc3ScanDialog.vue` | 截图上传、OCR 识别、命中展示和手动修正名单 |
+| `views/BlacklistView.vue` | 名单列表、类型筛选、搜索、分页、删除和页面布局 |
+| `components/BlacklistFormDialog.vue` | 添加 / 编辑名单弹窗、类型选择、表单校验和提交 |
+| `components/Wc3ScanDialog.vue` | 截图上传、OCR 识别、白/黑名单命中展示和手动修正名单 |
 
 ## 目录结构
 
@@ -73,6 +73,7 @@ blacklist/
 │  │  └─ blacklistMatcher.js  # 名称归一化、精确/模糊匹配
 │  └─ utils/
 │     ├─ errors.js            # HttpError
+│     ├─ listTypes.js         # 名单类型常量与兼容处理
 │     └─ validation.js        # 参数校验
 ├─ src/
 │  ├─ api/
@@ -144,7 +145,7 @@ pnpm preview
 
 ## WC3 大厅截图检测
 
-点击页面右上角「图片检测」，上传 WC3 大厅截图即可自动识别玩家名并比对黑名单。
+点击页面工具栏中的「图片检测」，上传 WC3 大厅截图即可自动识别玩家名，并分别比对白名单和黑名单。
 
 ![截图检测结果](docs/scan-preview.png)
 
@@ -154,7 +155,7 @@ pnpm preview
 2. 对每个玩家名区域做放大、反色、对比度增强和锐化。
 3. Tesseract.js 在本地完成 OCR，自动忽略电脑玩家和 UI 文本。
 4. 先精确匹配，再忽略标点/空格匹配，最后进行长度受限的模糊匹配。
-5. 结果中展示识别名单、命中原因、地图和记录时间。
+5. 结果按白名单 / 黑名单分组展示，并显示命中原因、地图和记录时间。
 6. 如 OCR 识别有误，可在弹窗下方逐行修正玩家名并点击「重新匹配」。
 
 限制与说明：
@@ -175,6 +176,7 @@ pnpm preview
 | --- | --- | --- | --- | --- |
 | `id` | string | 是 | 后端 | 数字字符串，取全部记录（含已软删）最大 id + 1 |
 | `name` | string | 是 | 前端 | 去除首尾空格后长度 1–50 |
+| `listType` | string | 是 | 前端 | `black` 表示黑名单，`white` 表示白名单；旧数据默认补为 `black` |
 | `map` | string | 是 | 前端 | 去除首尾空格后长度 1–50，手动输入 |
 | `reason` | string | 是 | 前端 | 去除首尾空格后长度 1–200 |
 | `addTime` | string | 是 | 后端 | `YYYY-MM-DD HH:mm:ss` |
@@ -184,8 +186,8 @@ pnpm preview
 
 ```json
 [
-  { "id": "1", "name": "张伟", "isDeleted": true },
-  { "id": "2", "name": "李娜", "isDeleted": false }
+  { "id": "1", "name": "张伟", "listType": "black", "isDeleted": true },
+  { "id": "2", "name": "李娜", "listType": "white", "isDeleted": false }
 ]
 ```
 
@@ -207,11 +209,11 @@ pnpm preview
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| GET | `/api/blacklist?name=&map=&page=1&pageSize=10` | 模糊搜索 + 分页，自动过滤已删除记录 |
-| POST | `/api/blacklist` | 新增，body：`{ name, map, reason }` |
-| PUT | `/api/blacklist/:id` | 修改未删除记录，body：`{ name, map, reason }` |
+| GET | `/api/blacklist?name=&map=&listType=&page=1&pageSize=10` | 按名称、地图和名单类型筛选 + 分页；`listType` 可为 `black`、`white` 或 `all` |
+| POST | `/api/blacklist` | 添加名单，body：`{ name, listType, map, reason }` |
+| PUT | `/api/blacklist/:id` | 修改未删除记录，body：`{ name, listType, map, reason }` |
 | DELETE | `/api/blacklist/:id` | 软删除，将 `isDeleted` 置为 `true` |
-| POST | `/api/blacklist/scan` | 上传 WC3 截图并 OCR 匹配，body：`{ image: "data:image/png;base64,..." }` |
+| POST | `/api/blacklist/scan` | 上传 WC3 截图并 OCR 匹配白/黑名单，body：`{ image: "data:image/png;base64,..." }` |
 | POST | `/api/blacklist/match` | 对修正后的名称重新匹配，body：`{ names: ["SANGUINIUS"] }` |
 
 ### 截图检测响应
@@ -230,18 +232,21 @@ pnpm preview
         "recognizedText": "SANGUINIUS",
         "matchType": "exact",
         "similarity": 1,
-        "blacklist": {
+        "record": {
           "id": "9",
           "name": "Sanguinius",
+          "listType": "white",
           "map": "dalaran",
-          "reason": "游戏内挂机",
+          "reason": "可信玩家，无违规记录",
           "addTime": "2026-11-04 22:37:37"
         }
       }
     ],
     "summary": {
       "recognizedCount": 2,
-      "matchedCount": 1
+      "matchedCount": 1,
+      "blackMatchedCount": 0,
+      "whiteMatchedCount": 1
     }
   },
   "msg": "success"
@@ -263,9 +268,10 @@ pnpm preview
     "list": [
       {
         "id": "2",
-        "name": "niu",
+        "name": "李娜",
+        "listType": "white",
         "map": "dal",
-        "reason": "afk。",
+        "reason": "可信玩家",
         "addTime": "2026-10-24 15:12:41",
         "isDeleted": false
       }
@@ -281,18 +287,18 @@ pnpm preview
 ### curl 示例
 
 ```bash
-# 新增
+# 添加白名单
 curl -X POST http://127.0.0.1:3000/api/blacklist \
   -H "Content-Type: application/json" \
-  -d "{\"name\":\"niu\",\"map\":\" /dala\",\"reason\":\"afk\"}"
+  -d "{\"name\":\"Alice\",\"listType\":\"white\",\"map\":\"dalaran\",\"reason\":\"trusted\"}"
 
-# 搜索 + 分页
-curl "http://127.0.0.1:3000/api/blacklist?name=zhu&page=1&pageSize=10"
+# 按名称、类型筛选 + 分页
+curl "http://127.0.0.1:3000/api/blacklist?name=ali&listType=white&page=1&pageSize=10"
 
-# 修改
+# 修改名单类型
 curl -X PUT http://127.0.0.1:3000/api/blacklist/1 \
   -H "Content-Type: application/json" \
-  -d "{\"name\":\"zhu\",\"map\":\" / dala\",\"reason\":\"horder‌\"}"
+  -d "{\"name\":\"Alice\",\"listType\":\"black\",\"map\":\"dalaran\",\"reason\":\"verified violation\"}"
 
 # 软删除
 curl -X DELETE http://127.0.0.1:3000/api/blacklist/1
@@ -303,5 +309,6 @@ curl -X DELETE http://127.0.0.1:3000/api/blacklist/1
 - 删除只把 `isDeleted` 修改为 `true`，不物理删除记录
 - 列表查询、修改、再次删除均会过滤已删除记录
 - 重复删除、修改已删除记录、访问不存在的 id 均返回 `404`
-- 必填校验失败、长度超限、分页参数非法均返回 `400`
+- 必填校验失败、长度超限、分页参数非法、名单类型非法均返回 `400`
 - 删除后再次新增，ID 仍从历史最大数字 ID 继续递增
+- 旧数据没有 `listType` 时，会在首次读取时自动补全为 `black`

@@ -1,25 +1,27 @@
-# Blacklist Management System
+# List Management System
 
 English | [简体中文](README.md)
 
-A blacklist management application built with **Vue 3 + Element Plus + Axios + Koa 2**. Data is persisted in a local JSON file, with full support for search, pagination, create, update, and soft delete. It also includes **WC3 lobby screenshot scanning**: upload a lobby screenshot and the app recognizes player names and checks them against the blacklist.
+A list management application built with **Vue 3 + Element Plus + Axios + Koa 2**, supporting both **blacklist and whitelist** entries. Data is persisted in a local JSON file, with search, type filtering, pagination, create, update, and soft delete. It also includes **WC3 lobby screenshot scanning**: upload a lobby screenshot and the app recognizes player names and checks them against both lists.
 
 ![Application preview](docs/i18n-preview.png)
 
 ## Features
 
 - Shows only records where `isDeleted !== true`, sorted by `addTime` descending
+- Filter by list type: all / blacklist / whitelist
 - Fixed page size of 10 records with pagination
 - Fuzzy search by `name` or `map` using OR logic, case-insensitive
 - 300 ms search debounce; empty filters return all records
-- Create / edit dialogs with client-side and server-side validation
+- Create / edit dialogs support choosing a list type, with client-side and server-side validation
+- Blacklist names render in red and whitelist names in green, with a type badge
 - Confirmation before deletion; records are soft-deleted and kept in the JSON file
 - Unified request loading state and success / error toast notifications
 - Auto-incrementing string IDs that are never reused after deletion
 - Server-generated `addTime`
 - `async-lock`-serialized reads and writes to prevent lost updates
-- Automatically creates `data/blacklist.json` on first startup
-- **WC3 lobby screenshot OCR**: locates both teams, recognizes player names, and returns blacklist matches with reasons
+- Automatically creates `data/blacklist.json`; legacy records are migrated to the blacklist
+- **WC3 lobby screenshot OCR**: locates both teams, recognizes player names, and returns separate whitelist / blacklist matches
 - OCR results can be corrected manually and matched again; screenshots are processed in memory only
 - Frontend styles use **SCSS**, with separate components for forms and screenshot scanning
 - Built-in **English / Chinese** internationalization, defaulting to English with a language switch in the top-right corner
@@ -52,9 +54,9 @@ The app defaults to English on first visit. Use the `EN` / `中文` switch in th
 
 | Component | Responsibility |
 | --- | --- |
-| `views/BlacklistView.vue` | List, search, pagination, deletion, and page layout |
-| `components/BlacklistFormDialog.vue` | Create / edit dialog, form validation, and submission |
-| `components/Wc3ScanDialog.vue` | Screenshot upload, OCR, match display, and manual name correction |
+| `views/BlacklistView.vue` | List view, type filter, search, pagination, deletion, and page layout |
+| `components/BlacklistFormDialog.vue` | Add / edit dialog, list type selection, form validation, and submission |
+| `components/Wc3ScanDialog.vue` | Screenshot upload, OCR, separate whitelist / blacklist matches, and manual correction |
 
 ## Project Structure
 
@@ -73,6 +75,7 @@ blacklist/
 │  │  └─ blacklistMatcher.js  # Name normalization, exact and fuzzy matching
 │  └─ utils/
 │     ├─ errors.js            # HttpError
+│     ├─ listTypes.js         # List type constants and legacy fallback
 │     └─ validation.js        # Request validation
 ├─ src/
 │  ├─ api/
@@ -145,7 +148,7 @@ pnpm preview
 
 ## WC3 Lobby Screenshot Scanning
 
-Click **Scan screenshot** in the toolbar, then upload a WC3 lobby screenshot. The app recognizes player names and checks them against the blacklist.
+Click **Scan screenshot** in the toolbar, then upload a WC3 lobby screenshot. The app recognizes player names and checks them against both the whitelist and blacklist.
 
 ![Screenshot scanning result](docs/scan-preview.png)
 
@@ -155,7 +158,7 @@ Processing flow:
 2. Each player-name region is enlarged, inverted, contrast-enhanced, and sharpened.
 3. Tesseract.js performs OCR locally and automatically ignores computer players and UI text.
 4. Names are matched exactly first, then with punctuation / whitespace ignored, and finally with length-limited fuzzy matching.
-5. Results show recognized players, match reasons, maps, and record timestamps.
+5. Matches are grouped into whitelist and blacklist sections with reasons, maps, and timestamps.
 6. If OCR made a mistake, correct the names line by line in the dialog and click **Search again**.
 
 Limitations:
@@ -176,6 +179,7 @@ Upload screen:
 | --- | --- | --- | --- | --- |
 | `id` | string | Yes | Backend | Numeric string: max ID across all records (including soft-deleted) + 1 |
 | `name` | string | Yes | Frontend | 1–50 characters after trimming |
+| `listType` | string | Yes | Frontend | `black` for blacklist or `white` for whitelist; legacy records default to `black` |
 | `map` | string | Yes | Frontend | 1–50 characters after trimming; entered manually |
 | `reason` | string | Yes | Frontend | 1–200 characters after trimming |
 | `addTime` | string | Yes | Backend | `YYYY-MM-DD HH:mm:ss` |
@@ -185,8 +189,8 @@ Auto-incrementing string ID example:
 
 ```json
 [
-  { "id": "1", "name": "Alice", "isDeleted": true },
-  { "id": "2", "name": "Bob", "isDeleted": false }
+  { "id": "1", "name": "Alice", "listType": "black", "isDeleted": true },
+  { "id": "2", "name": "Bob", "listType": "white", "isDeleted": false }
 ]
 ```
 
@@ -208,11 +212,11 @@ On failure, `code` is the corresponding HTTP status code (400 / 404 / 413 / 422 
 
 | Method | Path | Description |
 | --- | --- | --- |
-| GET | `/api/blacklist?name=&map=&page=1&pageSize=10` | Fuzzy search + pagination, automatically filters deleted records |
-| POST | `/api/blacklist` | Create a record; body: `{ name, map, reason }` |
-| PUT | `/api/blacklist/:id` | Update an active record; body: `{ name, map, reason }` |
+| GET | `/api/blacklist?name=&map=&listType=&page=1&pageSize=10` | Filter by name, map, and list type + pagination; `listType` can be `black`, `white`, or `all` |
+| POST | `/api/blacklist` | Add an entry; body: `{ name, listType, map, reason }` |
+| PUT | `/api/blacklist/:id` | Update an active entry; body: `{ name, listType, map, reason }` |
 | DELETE | `/api/blacklist/:id` | Soft-delete by setting `isDeleted` to `true` |
-| POST | `/api/blacklist/scan` | Upload a WC3 screenshot for OCR matching; body: `{ image: "data:image/png;base64,..." }` |
+| POST | `/api/blacklist/scan` | Upload a WC3 screenshot for whitelist / blacklist OCR matching; body: `{ image: "data:image/png;base64,..." }` |
 | POST | `/api/blacklist/match` | Match corrected names again; body: `{ names: ["SANGUINIUS"] }` |
 
 ### Screenshot Scanning Response
@@ -231,18 +235,21 @@ On failure, `code` is the corresponding HTTP status code (400 / 404 / 413 / 422 
         "recognizedText": "SANGUINIUS",
         "matchType": "exact",
         "similarity": 1,
-        "blacklist": {
+        "record": {
           "id": "9",
           "name": "Sanguinius",
+          "listType": "white",
           "map": "dalaran",
-          "reason": "AFK during the game",
+          "reason": "Trusted player, no violations",
           "addTime": "2026-11-04 22:37:37"
         }
       }
     ],
     "summary": {
       "recognizedCount": 2,
-      "matchedCount": 1
+      "matchedCount": 1,
+      "blackMatchedCount": 0,
+      "whiteMatchedCount": 1
     }
   },
   "msg": "success"
@@ -265,8 +272,9 @@ Possible `matchType` values:
       {
         "id": "2",
         "name": "Bob",
+        "listType": "white",
         "map": "dalaran",
-        "reason": "Left the game early.",
+        "reason": "Trusted player",
         "addTime": "2026-10-24 15:12:41",
         "isDeleted": false
       }
@@ -282,18 +290,18 @@ Possible `matchType` values:
 ### curl Examples
 
 ```bash
-# Create
+# Add a whitelist entry
 curl -X POST http://127.0.0.1:3000/api/blacklist \
   -H "Content-Type: application/json" \
-  -d "{\"name\":\"Alice\",\"map\":\"dalaran\",\"reason\":\"AFK\"}"
+  -d "{\"name\":\"Alice\",\"listType\":\"white\",\"map\":\"dalaran\",\"reason\":\"trusted\"}"
 
-# Search + pagination
-curl "http://127.0.0.1:3000/api/blacklist?name=ali&page=1&pageSize=10"
+# Filter by name and list type + pagination
+curl "http://127.0.0.1:3000/api/blacklist?name=ali&listType=white&page=1&pageSize=10"
 
-# Update
+# Change the list type
 curl -X PUT http://127.0.0.1:3000/api/blacklist/1 \
   -H "Content-Type: application/json" \
-  -d "{\"name\":\"Alice\",\"map\":\"dalaran\",\"reason\":\"Verified violation\"}"
+  -d "{\"name\":\"Alice\",\"listType\":\"black\",\"map\":\"dalaran\",\"reason\":\"verified violation\"}"
 
 # Soft delete
 curl -X DELETE http://127.0.0.1:3000/api/blacklist/1
@@ -304,5 +312,6 @@ curl -X DELETE http://127.0.0.1:3000/api/blacklist/1
 - Deletion only sets `isDeleted` to `true`; records are never physically removed
 - List queries, updates, and subsequent deletes all filter out deleted records
 - Repeated deletion, updating a deleted record, or using a missing ID returns `404`
-- Missing required fields, length violations, and invalid pagination parameters return `400`
+- Missing required fields, length violations, invalid pagination parameters, or invalid list types return `400`
 - Creating a new record after deletion continues from the highest historical numeric ID
+- Legacy records without `listType` are migrated to `black` on first read
