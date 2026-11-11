@@ -16,6 +16,7 @@ const editingId = ref('')
 const formRef = ref(null)
 
 const form = reactive({
+  listType: 'black',
   name: '',
   map: '',
   reason: ''
@@ -88,6 +89,7 @@ const rules = {
 }
 
 function resetForm() {
+  form.listType = 'black'
   form.name = ''
   form.map = ''
   form.reason = ''
@@ -107,6 +109,7 @@ function openCreate() {
 function openEdit(row) {
   isEdit.value = true
   editingId.value = row.id
+  form.listType = row.listType === 'white' ? 'white' : 'black'
   form.name = row.name
   form.map = row.map
   form.reason = row.reason
@@ -135,6 +138,7 @@ async function handleSubmit() {
   }
 
   const payload = {
+    listType: form.listType,
     name: form.name.trim(),
     map: form.map.trim(),
     reason: form.reason.trim()
@@ -201,6 +205,62 @@ defineExpose({
       class="blacklist-form"
       @submit.prevent
     >
+      <el-form-item
+        :label="t('form.listTypeLabel')"
+        prop="listType"
+        required
+      >
+        <div
+          class="list-type-picker"
+          role="radiogroup"
+          :aria-label="t('form.listTypeLabel')"
+        >
+          <button
+            type="button"
+            class="list-type-option black"
+            :class="{ 'is-active': form.listType === 'black' }"
+            role="radio"
+            :aria-checked="form.listType === 'black'"
+            @click="form.listType = 'black'"
+          >
+            <span class="type-option-marker"></span>
+            <span class="type-option-text">
+              <strong>{{ t('type.black') }}</strong>
+              <small>{{ t('form.blacklistHint') }}</small>
+            </span>
+            <span
+              v-if="form.listType === 'black'"
+              class="type-option-check"
+              aria-hidden="true"
+            >
+              ✓
+            </span>
+          </button>
+
+          <button
+            type="button"
+            class="list-type-option white"
+            :class="{ 'is-active': form.listType === 'white' }"
+            role="radio"
+            :aria-checked="form.listType === 'white'"
+            @click="form.listType = 'white'"
+          >
+            <span class="type-option-marker"></span>
+            <span class="type-option-text">
+              <strong>{{ t('type.white') }}</strong>
+              <small>{{ t('form.whitelistHint') }}</small>
+            </span>
+            <span
+              v-if="form.listType === 'white'"
+              class="type-option-check"
+              aria-hidden="true"
+            >
+              ✓
+            </span>
+          </button>
+        </div>
+      </el-form-item>
+
       <el-form-item :label="t('form.nameLabel')" prop="name" required>
         <el-input
           v-model="form.name"
@@ -297,6 +357,105 @@ defineExpose({
   gap: 16px;
 }
 
+.list-type-picker {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.list-type-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  min-width: 0;
+  padding: 12px;
+  color: #334155;
+  text-align: left;
+  background: #fff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
+
+  &:hover {
+    border-color: #cbd5e1;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #a5b4fc;
+    outline-offset: 1px;
+  }
+
+  &.black.is-active {
+    background: #fff7f7;
+    border-color: #fca5a5;
+    box-shadow: 0 6px 16px rgba(239, 68, 68, 0.08);
+  }
+
+  &.white.is-active {
+    background: #f0fdf4;
+    border-color: #86efac;
+    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.08);
+  }
+
+  &.black .type-option-marker {
+    background: #ef4444;
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
+  }
+
+  &.white .type-option-marker {
+    background: #10b981;
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+  }
+}
+
+.type-option-marker {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  margin-top: 6px;
+  border-radius: 50%;
+}
+
+.type-option-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+
+  strong {
+    color: #1e293b;
+    font-weight: 700;
+    font-size: 13px;
+  }
+
+  small {
+    color: #94a3b8;
+    font-size: 11px;
+    line-height: 1.45;
+  }
+}
+
+.type-option-check {
+  flex: 0 0 auto;
+  color: #4f46e5;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.black.is-active .type-option-check {
+  color: #dc2626;
+}
+
+.white.is-active .type-option-check {
+  color: #059669;
+}
+
 .required-hint {
   color: #94a3b8;
   font-size: 12px;
@@ -308,6 +467,10 @@ defineExpose({
 }
 
 @media (max-width: 620px) {
+  .list-type-picker {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .dialog-footer {
     align-items: stretch;
     flex-direction: column-reverse;

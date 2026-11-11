@@ -40,20 +40,76 @@ const scanError = ref('')
 const scanResult = ref(null)
 const scanNamesText = ref('')
 
-const hasScanMatches = computed(
-  () => (scanResult.value?.matches?.length || 0) > 0
+function matchListType(match) {
+  return match?.record?.listType === 'white' ? 'white' : 'black'
+}
+
+const scanMatches = computed(() =>
+  Array.isArray(scanResult.value?.matches) ? scanResult.value.matches : []
 )
 
-const matchedNameKeys = computed(() => {
-  const keys = new Set()
+const blackMatches = computed(() =>
+  scanMatches.value.filter((match) => matchListType(match) === 'black')
+)
 
-  for (const match of scanResult.value?.matches || []) {
+const whiteMatches = computed(() =>
+  scanMatches.value.filter((match) => matchListType(match) === 'white')
+)
+
+const hasScanMatches = computed(() => scanMatches.value.length > 0)
+const hasBlackMatches = computed(() => blackMatches.value.length > 0)
+
+const matchGroups = computed(() =>
+  [
+    {
+      listType: 'black',
+      matches: blackMatches.value,
+      titleKey: 'scan.blacklistHitsTitle'
+    },
+    {
+      listType: 'white',
+      matches: whiteMatches.value,
+      titleKey: 'scan.whitelistHitsTitle'
+    }
+  ].filter((group) => group.matches.length > 0)
+)
+
+const scanHitSummary = computed(() => {
+  if (!hasScanMatches.value) {
+    return t('scan.noHits')
+  }
+
+  const black = blackMatches.value.length
+  const white = whiteMatches.value.length
+
+  if (black > 0 && white > 0) {
+    return t('scan.mixedHits', { black, white })
+  }
+
+  if (black > 0) {
+    return t('scan.blacklistHits', { count: black })
+  }
+
+  return t('scan.whitelistHits', { count: white })
+})
+
+const matchedNameTypeMap = computed(() => {
+  const types = new Map()
+
+  for (const match of scanMatches.value) {
+    const type = matchListType(match)
+
     for (const value of [match.detectedName, match.recognizedText]) {
-      if (value) keys.add(String(value).trim().toLowerCase())
+      if (!value) continue
+
+      const key = String(value).trim().toLowerCase()
+      if (types.get(key) !== 'black') {
+        types.set(key, type)
+      }
     }
   }
 
-  return keys
+  return types
 })
 
 const SCAN_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp']
@@ -133,13 +189,21 @@ function normalizeScanResult(data) {
     : []
 
   const matches = Array.isArray(data?.matches) ? data.matches : []
+  const blackCount = matches.filter(
+    (match) => matchListType(match) === 'black'
+  ).length
+  const whiteCount = matches.filter(
+    (match) => matchListType(match) === 'white'
+  ).length
 
   return {
     names,
     matches,
     summary: {
       recognizedCount: names.length,
-      matchedCount: matches.length
+      matchedCount: matches.length,
+      blackMatchedCount: blackCount,
+      whiteMatchedCount: whiteCount
     }
   }
 }
@@ -159,9 +223,22 @@ async function handleScan() {
     scanResult.value = normalized
     scanNamesText.value = normalized.names.map((item) => item.name).join('\n')
 
-    if (normalized.matches.length) {
+    const blackCount = normalized.summary.blackMatchedCount
+    const whiteCount = normalized.summary.whiteMatchedCount
+
+    if (blackCount > 0) {
       ElMessage.warning(
-        t('scan.hitsFound', { count: normalized.matches.length })
+        t('scan.hitsFound', {
+          black: blackCount,
+          white: whiteCount
+        })
+      )
+    } else if (whiteCount > 0) {
+      ElMessage.success(
+        t('scan.hitsFound', {
+          black: blackCount,
+          white: whiteCount
+        })
       )
     } else if (normalized.names.length) {
       ElMessage.success(
@@ -177,8 +254,11 @@ async function handleScan() {
   }
 }
 
-function isNameMatched(name) {
-  return matchedNameKeys.value.has(String(name ?? '').trim().toLowerCase())
+function nameMatchType(name) {
+  return (
+    matchedNameTypeMap.value.get(String(name ?? '').trim().toLowerCase()) ||
+    null
+  )
 }
 
 function sameName(left, right) {
@@ -257,6 +337,12 @@ async function handleRematch() {
         }
       )
     })
+    const blackCount = matches.filter(
+      (match) => matchListType(match) === 'black'
+    ).length
+    const whiteCount = matches.filter(
+      (match) => matchListType(match) === 'white'
+    ).length
 
     scanResult.value = {
       ...(scanResult.value || {}),
@@ -264,13 +350,21 @@ async function handleRematch() {
       matches,
       summary: {
         recognizedCount: nextNames.length,
-        matchedCount: matches.length
+        matchedCount: matches.length,
+        blackMatchedCount: blackCount,
+        whiteMatchedCount: whiteCount
       }
     }
     scanNamesText.value = names.join('\n')
 
-    if (matches.length) {
-      ElMessage.warning(t('scan.rematchHits', { count: matches.length }))
+    if (blackCount > 0) {
+      ElMessage.warning(
+        t('scan.rematchHits', { black: blackCount, white: whiteCount })
+      )
+    } else if (whiteCount > 0) {
+      ElMessage.success(
+        t('scan.rematchHits', { black: blackCount, white: whiteCount })
+      )
     } else {
       ElMessage.success(t('scan.rematchNoHits'))
     }
@@ -368,23 +462,21 @@ watch(
       </div>
 
       <div v-if="scanResult" class="scan-result">
-        <div class="scan-summary" :class="{ 'has-hit': hasScanMatches }">
+        <div
+          class="scan-summary"
+          :class="{
+            'has-black': hasBlackMatches,
+            'has-white': hasScanMatches && !hasBlackMatches
+          }"
+        >
           <div class="scan-summary-icon">
             <el-icon :size="23">
-              <WarningFilled v-if="hasScanMatches" />
+              <WarningFilled v-if="hasBlackMatches" />
               <CircleCheckFilled v-else />
             </el-icon>
           </div>
           <div class="scan-summary-copy">
-            <strong>
-              {{
-                hasScanMatches
-                  ? t('scan.hitTitle', {
-                      count: scanResult.matches.length
-                    })
-                  : t('scan.noHits')
-              }}
-            </strong>
+            <strong>{{ scanHitSummary }}</strong>
             <p>
               {{ t('scan.recognizedText', { count: scanResult.names.length }) }}
             </p>
@@ -398,7 +490,10 @@ watch(
               v-for="(item, index) in scanResult.names"
               :key="`${item.name}-${index}`"
               class="scan-name-chip"
-              :class="{ hit: isNameMatched(item.name) }"
+              :class="{
+                'hit-black': nameMatchType(item.name) === 'black',
+                'hit-white': nameMatchType(item.name) === 'white'
+              }"
             >
               <span class="scan-name-dot"></span>
               {{ item.name }}
@@ -410,42 +505,56 @@ watch(
           </p>
         </section>
 
-        <section v-if="hasScanMatches" class="scan-section">
-          <h4>{{ t('scan.hitsTitle') }}</h4>
+        <section
+          v-for="group in matchGroups"
+          :key="group.listType"
+          class="scan-section"
+        >
+          <h4>{{ t(group.titleKey) }}</h4>
           <article
-            v-for="match in scanResult.matches"
-            :key="match.blacklist.id"
+            v-for="match in group.matches"
+            :key="`${group.listType}-${match.record.id}`"
             class="scan-match-card"
+            :class="`is-${group.listType}`"
           >
             <div class="scan-match-head">
               <div class="scan-match-title">
                 <span class="scan-match-name">
-                  {{ match.blacklist.name }}
+                  {{ match.record.name }}
                 </span>
                 <span
-                  v-if="!sameName(match.detectedName, match.blacklist.name)"
+                  v-if="!sameName(match.detectedName, match.record.name)"
                   class="scan-match-ocr"
                 >
                   {{ t('scan.recognizedAs', { name: match.detectedName }) }}
                 </span>
               </div>
-              <el-tag
-                size="small"
-                effect="light"
-                :type="matchTypeTag(match.matchType)"
-              >
-                {{ matchTypeLabel(match.matchType) }}
-              </el-tag>
+              <div class="scan-match-tags">
+                <el-tag
+                  size="small"
+                  effect="light"
+                  :type="group.listType === 'white' ? 'success' : 'danger'"
+                >
+                  {{ t(`type.${group.listType}`) }}
+                </el-tag>
+                <el-tag
+                  size="small"
+                  effect="light"
+                  :type="matchTypeTag(match.matchType)"
+                >
+                  {{ matchTypeLabel(match.matchType) }}
+                </el-tag>
+              </div>
             </div>
 
             <div class="scan-match-meta">
-              <span>{{ t('scan.map', { map: match.blacklist.map }) }}</span>
+              <span>{{ t('scan.map', { map: match.record.map }) }}</span>
               <span>
-                {{ t('scan.addedAt', { time: match.blacklist.addTime }) }}
+                {{ t('scan.addedAt', { time: match.record.addTime }) }}
               </span>
             </div>
 
-            <p class="scan-match-reason">{{ match.blacklist.reason }}</p>
+            <p class="scan-match-reason">{{ match.record.reason }}</p>
           </article>
         </section>
 
@@ -687,10 +796,16 @@ watch(
   border: 1px solid #bbf7d0;
   border-radius: 14px;
 
-  &.has-hit {
+  &.has-black {
     color: #9f1239;
     background: #fff1f2;
     border-color: #fecdd3;
+  }
+
+  &.has-white {
+    color: #166534;
+    background: #f0fdf4;
+    border-color: #bbf7d0;
   }
 }
 
@@ -749,13 +864,23 @@ watch(
   border-radius: 8px;
   word-break: break-all;
 
-  &.hit {
+  &.hit-black {
     color: #b91c1c;
     background: #fef2f2;
     border-color: #fecaca;
 
     .scan-name-dot {
       background: #ef4444;
+    }
+  }
+
+  &.hit-white {
+    color: #047857;
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+
+    .scan-name-dot {
+      background: #10b981;
     }
   }
 
@@ -797,6 +922,12 @@ watch(
   + .scan-match-card {
     margin-top: 10px;
   }
+
+  &.is-white {
+    background: #f8fffb;
+    border-color: #bbf7d0;
+    border-left-color: #10b981;
+  }
 }
 
 .scan-match-head {
@@ -804,6 +935,15 @@ watch(
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+}
+
+.scan-match-tags {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 .scan-match-title {
@@ -819,6 +959,10 @@ watch(
   font-weight: 700;
   font-size: 15px;
   word-break: break-all;
+}
+
+.scan-match-card.is-white .scan-match-name {
+  color: #047857;
 }
 
 .scan-match-ocr {
@@ -933,6 +1077,10 @@ watch(
   .scan-match-head {
     flex-direction: column;
     gap: 8px;
+  }
+
+  .scan-match-tags {
+    justify-content: flex-start;
   }
 
   .scan-match-meta {

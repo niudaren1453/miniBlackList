@@ -40,14 +40,17 @@ const records = ref([])
 const total = ref(0)
 const page = ref(1)
 const loading = ref(false)
-const filters = reactive({ name: '', map: '' })
+const filters = reactive({ name: '', map: '', listType: 'all' })
 
 const scanDialogVisible = ref(false)
 const formDialogRef = ref(null)
 const deletingId = ref(null)
 
 const hasFilters = computed(
-  () => Boolean(filters.name.trim()) || Boolean(filters.map.trim())
+  () =>
+    Boolean(filters.name.trim()) ||
+    Boolean(filters.map.trim()) ||
+    filters.listType !== 'all'
 )
 
 let searchTimer = null
@@ -79,6 +82,13 @@ function handleReset() {
   clearSearchTimer()
   filters.name = ''
   filters.map = ''
+  filters.listType = 'all'
+  page.value = 1
+  fetchList()
+}
+
+function handleListTypeChange() {
+  clearSearchTimer()
   page.value = 1
   fetchList()
 }
@@ -96,6 +106,7 @@ async function fetchList() {
     const data = await getBlacklistList({
       name: filters.name.trim(),
       map: filters.map.trim(),
+      listType: filters.listType === 'all' ? '' : filters.listType,
       page: page.value,
       pageSize: PAGE_SIZE
     })
@@ -185,6 +196,14 @@ function avatarTone(id) {
   return tones[Number(id) % tones.length] || tones[0]
 }
 
+function listTypeOf(row) {
+  return row?.listType === 'white' ? 'white' : 'black'
+}
+
+function nameTypeClass(row) {
+  return listTypeOf(row) === 'white' ? 'type-white' : 'type-black'
+}
+
 onMounted(fetchList)
 onBeforeUnmount(clearSearchTimer)
 </script>
@@ -261,6 +280,16 @@ onBeforeUnmount(clearSearchTimer)
               @clear="scheduleSearch"
               @keyup.enter="handleSearchNow"
             />
+            <el-select
+              v-model="filters.listType"
+              class="filter-select"
+              :aria-label="t('type.filterLabel')"
+              @change="handleListTypeChange"
+            >
+              <el-option :label="t('type.all')" value="all" />
+              <el-option :label="t('type.black')" value="black" />
+              <el-option :label="t('type.white')" value="white" />
+            </el-select>
             <el-button type="primary" :icon="Search" @click="handleSearchNow">
               {{ t('toolbar.search') }}
             </el-button>
@@ -312,13 +341,33 @@ onBeforeUnmount(clearSearchTimer)
                 <div class="name-cell">
                   <span
                     class="name-avatar"
-                    :class="avatarTone(row.id)"
+                    :class="[avatarTone(row.id), nameTypeClass(row)]"
                     aria-hidden="true"
                   >
                     {{ getInitial(row.name) }}
                   </span>
-                  <span class="name-text">{{ row.name }}</span>
+                  <span class="name-text" :class="nameTypeClass(row)">
+                    {{ row.name }}
+                  </span>
                 </div>
+              </template>
+            </el-table-column>
+
+            <el-table-column
+              prop="listType"
+              :label="t('table.type')"
+              width="112"
+            >
+              <template #default="{ row }">
+                <el-tag
+                  class="list-type-tag"
+                  size="small"
+                  effect="light"
+                  round
+                  :type="listTypeOf(row) === 'white' ? 'success' : 'danger'"
+                >
+                  {{ t(`type.${listTypeOf(row)}`) }}
+                </el-tag>
               </template>
             </el-table-column>
 
@@ -624,6 +673,7 @@ onBeforeUnmount(clearSearchTimer)
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  flex-wrap: wrap;
   padding: 22px 24px;
   border-bottom: 1px solid #eef2f7;
 }
@@ -637,6 +687,10 @@ onBeforeUnmount(clearSearchTimer)
 
 .filter-input {
   width: 210px;
+}
+
+.filter-select {
+  width: 150px;
 }
 
 .toolbar-actions {
@@ -738,12 +792,34 @@ onBeforeUnmount(clearSearchTimer)
   background: #fef3c7;
 }
 
+.name-avatar.type-black {
+  color: #dc2626;
+  background: #fef2f2;
+}
+
+.name-avatar.type-white {
+  color: #059669;
+  background: #ecfdf5;
+}
+
 .name-text {
   overflow: hidden;
   color: #1e293b;
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.name-text.type-black {
+  color: #b91c1c;
+}
+
+.name-text.type-white {
+  color: #047857;
+}
+
+.list-type-tag {
+  font-weight: 600;
 }
 
 .map-pill {
@@ -866,6 +942,10 @@ onBeforeUnmount(clearSearchTimer)
   }
 
   .filter-input {
+    width: 100%;
+  }
+
+  .filter-select {
     width: 100%;
   }
 

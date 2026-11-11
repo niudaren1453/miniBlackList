@@ -1,9 +1,15 @@
 export default {
   app: {
-    eyebrow: 'Blacklist console',
-    title: 'Blacklist Management',
+    eyebrow: 'List console',
+    title: 'List Management',
     totalRecords: 'Total records: {total}',
     languageSwitch: 'Switch language'
+  },
+  type: {
+    all: 'All types',
+    black: 'Blacklist',
+    white: 'Whitelist',
+    filterLabel: 'Filter by list type'
   },
   toolbar: {
     aria: 'Search and actions',
@@ -12,49 +18,53 @@ export default {
     search: 'Search',
     reset: 'Reset',
     imageScan: 'Scan screenshot',
-    add: 'Add record'
+    add: 'Add entry'
   },
   table: {
     id: 'ID',
     name: 'Name',
+    type: 'Type',
     map: 'Map',
-    reason: 'Reason',
+    reason: 'Reason for adding',
     addTime: 'Added at',
     actions: 'Actions',
     edit: 'Edit',
     delete: 'Delete',
-    empty: 'No blacklist records',
-    emptyFiltered: 'No matching records. Try adjusting the filters.',
-    emptyHint: 'Click “Add record” to create the first one.',
-    footer: 'Active records only · Newest first',
-    deleteTitle: 'Delete record',
+    empty: 'No list entries',
+    emptyFiltered: 'No matching entries. Try adjusting the filters.',
+    emptyHint: 'Click “Add entry” to create the first one.',
+    footer: 'Active entries only · Newest first',
+    deleteTitle: 'Delete entry',
     deleteConfirm:
-      'Delete “{name}”? The record will be hidden from the list.',
+      'Delete “{name}”? The entry will be hidden from the list.',
     cancel: 'Cancel',
     confirmDelete: 'Delete',
-    deleteSuccess: 'Record deleted'
+    deleteSuccess: 'Entry deleted'
   },
   form: {
-    createTitle: 'Add Blacklist Record',
-    editTitle: 'Edit Blacklist Record',
+    createTitle: 'Add List Entry',
+    editTitle: 'Edit List Entry',
     createSubtitle:
-      'Fill in the details. The ID and added time are generated automatically.',
-    editSubtitle: 'Update the name, map, or reason.',
+      'Choose a list type and fill in the details. The ID and added time are generated automatically.',
+    editSubtitle: 'Update the list type, name, map, or reason.',
+    listTypeLabel: 'List type',
+    blacklistHint: 'Players to avoid or review.',
+    whitelistHint: 'Trusted players, useful for reducing false positives.',
     nameLabel: 'Name',
     nameField: 'Name',
     namePlaceholder: 'Enter a name',
     mapLabel: 'Map',
     mapField: 'Map',
     mapPlaceholder: 'Enter the map manually',
-    reasonLabel: 'Reason',
-    reasonField: 'Reason',
-    reasonPlaceholder: 'Explain why this player is blacklisted',
+    reasonLabel: 'Reason for adding to the list',
+    reasonField: 'Reason for adding to the list',
+    reasonPlaceholder: 'Explain why this player is being added',
     requiredHint: 'Required fields',
     cancel: 'Cancel',
-    create: 'Add record',
+    create: 'Add entry',
     save: 'Save changes',
-    createSuccess: 'Record added',
-    updateSuccess: 'Record updated',
+    createSuccess: 'Entry added',
+    updateSuccess: 'Entry updated',
     validation: {
       nameRequired: 'Please enter a name',
       mapRequired: 'Please enter a map',
@@ -65,7 +75,7 @@ export default {
   scan: {
     title: 'WC3 Lobby Screenshot Check',
     subtitle:
-      'Upload a lobby screenshot to recognize player names and match them against the blacklist.',
+      'Upload a lobby screenshot to recognize player names and match them against the whitelist and blacklist.',
     uploadPrefix: 'Drag a WC3 lobby screenshot here, or',
     chooseFile: 'click to choose',
     uploadHint: 'PNG / JPG / WebP, up to 8MB',
@@ -81,15 +91,19 @@ export default {
     anotherImage: 'Choose another image',
     privacy:
       'The screenshot is used only for this check and is never written to disk.',
-    noHits: 'No blacklist match',
-    hitTitle: 'Blacklist hits: {count}',
+    noHits: 'No list match',
+    blacklistHits: 'Blacklist hits: {count}',
+    whitelistHits: 'Whitelist hits: {count}',
+    mixedHits: 'Blacklist: {black} · Whitelist: {white}',
     recognizedText:
       'Recognized names: {count}. Correct them below and search again if needed.',
     recognizedTitle: 'Recognized names',
     host: 'Host',
     emptyNames:
       'No player names recognized. Add names below and search again.',
-    hitsTitle: 'Blacklist hits',
+    hitsTitle: 'List matches',
+    blacklistHitsTitle: 'Blacklist matches',
+    whitelistHitsTitle: 'Whitelist matches',
     recognizedAs: 'Recognized as {name}',
     map: 'Map: {map}',
     addedAt: 'Added: {time}',
@@ -103,12 +117,12 @@ export default {
     noNamesError: 'Enter at least one player name.',
     tooManyNames: 'You can check at most 32 player names at a time.',
     nameTooLong: 'Each player name must be at most 50 characters.',
-    hitsFound: 'Blacklist hits: {count}',
-    recognizedNoHits: 'Recognized names: {count}. No blacklist match.',
+    hitsFound: 'Blacklist: {black} · Whitelist: {white}',
+    recognizedNoHits: 'Recognized names: {count}. No list match.',
     noNamesTitle:
       'No player names recognized. Please try a clearer lobby screenshot.',
-    rematchHits: 'Search completed. Blacklist hits: {count}',
-    rematchNoHits: 'Search completed. No blacklist match.',
+    rematchHits: 'Search completed. Blacklist: {black} · Whitelist: {white}',
+    rematchNoHits: 'Search completed. No list match.',
     matchType: {
       exact: 'Exact match',
       normalized: 'Ignoring punctuation',
@@ -123,7 +137,7 @@ export default {
     network: 'Network error. Please make sure the backend service is running.',
     http: 'Request failed (HTTP {status})',
     invalid: 'Invalid request. Please check the form.',
-    notFound: 'Record not found or already deleted.',
+    notFound: 'Entry not found or already deleted.',
     methodNotAllowed: 'Request method not allowed.',
     tooLarge:
       'The request is too large. Images must be 8MB or smaller.',
