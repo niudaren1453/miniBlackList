@@ -80,6 +80,10 @@ export default {
     chooseFile: 'click to choose',
     uploadHint: 'PNG / JPG / WebP, up to 8MB',
     imageAlt: 'WC3 lobby screenshot preview',
+    templatesTitle: 'Screenshot examples',
+    templatesHint: 'Click an example to preview',
+    template5p: 'Five-player lobby',
+    template6p: 'Six-player lobby',
     chooseAnother: 'Choose another',
     scanningTitle: 'Recognizing lobby players…',
     scanningHint:

@@ -14,8 +14,21 @@ import {
   matchBlacklistNames,
   scanBlacklistImage
 } from '../api/blacklist'
+import template5p from '../assets/scan-templates/wc3-lobby-5p.png'
+import template6p from '../assets/scan-templates/wc3-lobby-6p.png'
 
 const { t } = useI18n({ useScope: 'global' })
+
+const scanTemplates = [
+  {
+    src: template5p,
+    titleKey: 'scan.template5p'
+  },
+  {
+    src: template6p,
+    titleKey: 'scan.template6p'
+  }
+]
 
 const props = defineProps({
   modelValue: {
@@ -456,6 +469,31 @@ watch(
         </div>
       </div>
 
+      <section v-if="!scanFile" class="scan-templates">
+        <div class="scan-templates-head">
+          <h4>{{ t('scan.templatesTitle') }}</h4>
+          <span>{{ t('scan.templatesHint') }}</span>
+        </div>
+        <div class="scan-template-grid">
+          <figure
+            v-for="item in scanTemplates"
+            :key="item.titleKey"
+            class="scan-template-card"
+          >
+            <el-image
+              class="scan-template-image"
+              :src="item.src"
+              :alt="t(item.titleKey)"
+              fit="contain"
+              :preview-src-list="[item.src]"
+              preview-teleported
+              hide-on-click-modal
+            />
+            <figcaption>{{ t(item.titleKey) }}</figcaption>
+          </figure>
+        </div>
+      </section>
+
       <div v-if="scanError" class="scan-error">
         <el-icon :size="16"><WarningFilled /></el-icon>
         <span>{{ scanError }}</span>
@@ -705,6 +743,81 @@ watch(
   background: #0b1120;
   border: 1px solid #e2e8f0;
   border-radius: 16px;
+}
+
+.scan-templates {
+  margin-top: 14px;
+  padding: 14px;
+  background: #fbfcff;
+  border: 1px solid #eef2f7;
+  border-radius: 14px;
+}
+
+.scan-templates-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+
+  h4 {
+    margin: 0;
+    color: #334155;
+    font-weight: 700;
+    font-size: 12px;
+  }
+
+  span {
+    color: #94a3b8;
+    font-size: 11px;
+  }
+}
+
+.scan-template-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.scan-template-card {
+  margin: 0;
+  padding: 7px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 11px;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+
+  &:hover {
+    border-color: #c7d2fe;
+    box-shadow: 0 8px 20px rgba(79, 70, 229, 0.08);
+  }
+
+  figcaption {
+    margin-top: 7px;
+    color: #475569;
+    font-weight: 600;
+    font-size: 11px;
+  }
+}
+
+.scan-template-image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1.95 / 1;
+  overflow: hidden;
+  background: #0b1120;
+  border-radius: 7px;
+  cursor: zoom-in;
+
+  :deep(.el-image__inner) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
 }
 
 .scan-preview {
@@ -1053,6 +1166,14 @@ watch(
 
   .scan-dropzone {
     padding: 28px 16px 26px;
+  }
+
+  .scan-templates {
+    padding: 10px;
+  }
+
+  .scan-template-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .scan-preview {
